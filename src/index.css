@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply antialiased text-slate-900 bg-white;
+  }
+
+  h1 {
+    @apply text-4xl font-bold tracking-tight text-slate-900 mb-4;
+  }
+
+  h2 {
+    @apply text-3xl font-bold tracking-tight text-slate-900 mb-3;
+  }
+
+  h3 {
+    @apply text-2xl font-bold tracking-tight text-slate-900 mb-3;
+  }
+
+  h4 {
+    @apply text-xl font-semibold tracking-tight text-slate-900 mb-2;
+  }
+
+  p {
+    @apply text-slate-600 leading-relaxed mb-4;
+  }
+
+  /* Smooth Focus Styles Global */
+  :focus-visible {
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+  }
+}

@@ -1,0 +1,28 @@
+{   
+    "message": "",
+    "object": {
+        "general": {
+            "cargo": "",
+            "jefeInmediato": "",
+            "version": "",
+            "fecha": ""
+        },
+        "asistenciales": [],
+        "domiciliaria": [],
+        "educacion": {
+            "nivel": "",
+            "titulo": "",
+            "puntaje": 0,
+            "minimo": 0
+        },
+        "formacion": [],
+        "habilidades": [],
+        "experiencia": {
+            "cargo": "",
+            "duracion": "",
+            "puntaje": 0,
+            "minimo": 0
+        }
+    },
+    "status": ""
+}
