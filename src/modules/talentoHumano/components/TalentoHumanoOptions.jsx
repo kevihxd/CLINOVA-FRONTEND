@@ -1,6 +1,7 @@
 import { FilePlus, Users, FileSignature } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../router/routes.const';
+import { useAuth } from '../../../providers/AuthProvider';
 
 export const TALENTO_HUMANO_OPTIONS = [
     { title: 'Perfiles de Cargo', icon: FilePlus, color: 'text-indigo-600', bg: 'bg-indigo-50', page: ROUTES.TALENTO_HUMANO.PERFIL_CARGO.path },
@@ -11,7 +12,16 @@ export const TALENTO_HUMANO_OPTIONS = [
 export const TalentoHumanoOptions = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const options = TALENTO_HUMANO_OPTIONS;
+    
+    const { user } = useAuth();
+
+    const userRole = String(user?.rol || user?.role || user?.roles?.[0] || 'USER').toUpperCase(); 
+    const isAuditor = userRole.includes('ADMIN') || userRole.includes('HR_MANAGER');
+
+    const allowedOptions = TALENTO_HUMANO_OPTIONS.filter(opt => {
+        if (isAuditor) return true;
+        return opt.title === 'Hoja de Vida';
+    });
 
     const handleNavigation = (path) => {
         if (location.pathname !== path) {
@@ -21,7 +31,7 @@ export const TalentoHumanoOptions = () => {
 
     return (
         <div className="grid grid-cols-1 gap-4 p-4">
-            {options.map((opt, idx) => (
+            {allowedOptions.map((opt, idx) => (
                 <button
                     key={idx}
                     onClick={() => handleNavigation(opt.page)}

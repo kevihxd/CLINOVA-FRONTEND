@@ -7,11 +7,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { containerVariants, itemVariants } from '../utils/dashboardVariants';
 import { OPTIONS_MAP, DATA_MAP } from '../constants/dashboardMaps';
 import { useDashboardConfig } from '../../../providers/DashboardConfigProvider';
+import { useAuth } from '../../../providers/AuthProvider';
 
 const Dashboard = () => {
     const { cards, updatePosition, selectedModule, selectModule, closeSidebar } = useBoard();
     const containerRef = useRef(null);
     const { viewMode, toggleViewMode } = useDashboardConfig();
+    
+    const { user } = useAuth(); 
+
+    const userRole = String(user?.rol || user?.role || user?.roles?.[0] || 'USER').toUpperCase(); 
+    const isAuditor = userRole.includes('ADMIN') || userRole.includes('HR_MANAGER');
+
+    const allowedCards = cards.filter(card => {
+        if (isAuditor) return true;
+        return card.title === 'Talento Humano';
+    });
 
     return (
         <div ref={containerRef} className="w-full h-[calc(100vh-80px)] relative overflow-hidden bg-slate-50">
@@ -58,7 +69,7 @@ const Dashboard = () => {
                         transition={{ duration: 0.3 }}
                         className="w-full h-full absolute inset-0"
                     >
-                        {cards.map(card => (
+                        {allowedCards.map(card => (
                             <ModuleCard
                                 key={card.id}
                                 card={card}
@@ -86,7 +97,7 @@ const Dashboard = () => {
                         className="w-full h-full flex items-center justify-center p-8 overflow-y-auto relative z-10"
                     >
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto w-full">
-                            {cards.map((card) => (
+                            {allowedCards.map((card) => (
                                 <motion.div
                                     key={card.id}
                                     variants={itemVariants}

@@ -1,20 +1,25 @@
 import React, { useState } from 'react';
-import { Search, FileText, Download, ChevronDown, FileBarChart, BookOpen, GraduationCap, ArrowLeft, User, Camera, Briefcase, Bot } from 'lucide-react';
+import { Search, FileText, Download, ChevronDown, FileBarChart, BookOpen, GraduationCap, ArrowLeft, User, Camera, Briefcase, Bot, CheckCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
 import { UsuariosService } from '../../configuracion/services/usuarios.service';
+import { useAuth } from '../../../providers/AuthProvider';
 
 export const HojaVida = () => {
     const navigate = useNavigate();
     const { showAlert } = useAlert();
+    const { user } = useAuth();
+    
     const [searchTerm, setSearchTerm] = useState('');
     const [showReportsMenu, setShowReportsMenu] = useState(false);
-
     const [activeTab, setActiveTab] = useState('datos');
     const [hojaVidaId, setHojaVidaId] = useState(null);
     const [cvNombre, setCvNombre] = useState('');
+    
+    const userRole = String(user?.rol || user?.role || user?.roles?.[0] || 'USER').toUpperCase();
+    const isAuditor = userRole.includes('ADMIN') || userRole.includes('HR_MANAGER');
 
     const [datosCV, setDatosCV] = useState({
         nombres: '',
@@ -26,38 +31,19 @@ export const HojaVida = () => {
     });
 
     const [fotoFile, setFotoFile] = useState(null);
-
-    const [educacion, setEducacion] = useState({
-        nivelEstudio: '',
-        institucion: '',
-        titulo: '',
-        fechaInicio: '',
-        fechaFin: ''
-    });
-
-    const [experiencia, setExperiencia] = useState({
-        empresa: '',
-        cargo: '',
-        fechaInicio: '',
-        fechaFin: '',
-        funciones: ''
-    });
-
+    const [educacion, setEducacion] = useState({ nivelEstudio: '', institucion: '', titulo: '', fechaInicio: '', fechaFin: '' });
+    const [experiencia, setExperiencia] = useState({ empresa: '', cargo: '', fechaInicio: '', fechaFin: '', funciones: '' });
     const [loteFile, setLoteFile] = useState(null);
     const [resultadosIA, setResultadosIA] = useState([]);
     const [procesandoIA, setProcesandoIA] = useState(false);
 
-    const handleSearch = async (e) => {
-        e.preventDefault();
-        if (!searchTerm.trim()) return;
-
+    const buscarEnUsuarios = async (cedula) => {
         try {
             const data = await UsuariosService.getAll();
             const usuariosReales = Array.isArray(data) ? data : (data?.data || []);
-
             const userFound = usuariosReales.find(u => 
-                (u.persona?.numero_documento?.toString() === searchTerm.trim()) ||
-                (u.cedula?.toString() === searchTerm.trim())
+                (u.persona?.numero_documento?.toString() === cedula) ||
+                (u.cedula?.toString() === cedula)
             );
 
             if (userFound) {
@@ -66,31 +52,77 @@ export const HojaVida = () => {
                     apellidos: `${userFound.persona?.primer_apellido || ''} ${userFound.persona?.segundo_apellido || ''}`.trim(),
                     cedula: userFound.persona?.numero_documento || userFound.cedula || '',
                     fechaNacimiento: userFound.persona?.fecha_nacimiento || '',
-                    fechaIngreso: datosCV.fechaIngreso, 
+                    fechaIngreso: '', 
                     correoElectronico: userFound.persona?.correo_electronico || ''
                 });
-                showAlert({ message: 'Datos del colaborador cargados exitosamente', status: 'success' });
+                setHojaVidaId(null);
+                setCvNombre('');
+                setResultadosIA([]);
+                showAlert({ message: 'Datos pre-cargados desde usuario. Por favor guarde para crear la Hoja de Vida.', status: 'info' });
             } else {
-                showAlert({ message: 'No se encontró un usuario con ese documento', status: 'error' });
+                setDatosCV(prev => ({ ...prev, cedula: cedula }));
+                setHojaVidaId(null);
+                setCvNombre('');
+                setResultadosIA([]);
+                showAlert({ message: 'No se encontraron registros. Puede crear uno nuevo.', status: 'info' });
             }
         } catch (error) {
-            showAlert({ message: 'Error al buscar el usuario en el sistema', status: 'error' });
+            showAlert({ message: 'Error al buscar en usuarios.', status: 'error' });
+        }
+    };
+
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        const cedulaTrim = searchTerm.trim();
+        if (!cedulaTrim) return;
+
+        try {
+            const response = await http.get(`/hojas-vida/cedula/${cedulaTrim}`);
+            if ((response.status === 'SUCCESS' || response.data) && response.data) {
+                const hv = response.data.data || response.data;
+                setHojaVidaId(hv.id);
+                setCvNombre(`${hv.nombres} ${hv.apellidos}`);
+                setDatosCV({
+                    nombres: hv.nombres || '',
+                    apellidos: hv.apellidos || '',
+                    cedula: hv.cedula || '',
+                    fechaNacimiento: hv.fechaNacimiento || '',
+                    fechaIngreso: hv.fechaIngreso || '',
+                    correoElectronico: hv.correoElectronico || ''
+                });
+
+                try {
+                    const soportesRes = await http.get(`/soportes/hoja-vida/${hv.id}`);
+                    if (soportesRes.data) {
+                        setResultadosIA(Array.isArray(soportesRes.data) ? soportesRes.data : (soportesRes.data.data || []));
+                    }
+                } catch (err) {
+                    setResultadosIA([]);
+                }
+
+                showAlert({ message: 'Hoja de Vida encontrada y cargada', status: 'success' });
+            }
+        } catch (error) {
+            buscarEnUsuarios(cedulaTrim);
         }
     };
 
     const handleCrearCV = async (e) => {
         e.preventDefault();
         try {
-            const response = await http.post('/hojas-vida', datosCV);
-            if (response.status === 'SUCCESS' || response.data?.id) {
-                const idGenerado = response.data?.id || response.object?.id || response.id;
+            if (hojaVidaId) {
+                await http.put(`/hojas-vida/${hojaVidaId}`, datosCV);
+                setCvNombre(`${datosCV.nombres} ${datosCV.apellidos}`);
+                showAlert({ message: 'Datos actualizados exitosamente', status: 'success' });
+            } else {
+                const response = await http.post('/hojas-vida', datosCV);
+                const idGenerado = response.data?.data?.id || response.data?.id || response.id;
                 setHojaVidaId(idGenerado);
                 setCvNombre(`${datosCV.nombres} ${datosCV.apellidos}`);
-                showAlert({ message: `Hoja de Vida creada con ID: ${idGenerado}`, status: 'success' });
-                setActiveTab('foto');
+                showAlert({ message: 'Hoja de Vida creada exitosamente', status: 'success' });
             }
         } catch (error) {
-            showAlert({ message: 'Error al crear la Hoja de Vida', status: 'error' });
+            showAlert({ message: 'Error al guardar la Hoja de Vida', status: 'error' });
         }
     };
 
@@ -146,14 +178,38 @@ export const HojaVida = () => {
             const response = await http.post(`/soportes-inteligentes/procesar-lote/${hojaVidaId}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            if (response.status === 'SUCCESS' && response.data) {
-                setResultadosIA(response.data);
+            if (response.status === 'SUCCESS' || response.data) {
+                setResultadosIA(Array.isArray(response.data) ? response.data : (response.data?.data || []));
                 showAlert({ message: 'Procesamiento con IA completado', status: 'success' });
             }
         } catch (error) {
             showAlert({ message: 'Error al procesar los documentos', status: 'error' });
         } finally {
             setProcesandoIA(false);
+        }
+    };
+
+    const handleAprobarDocumento = async (idx, idSoporte) => {
+        try {
+            await http.put(`/soportes/${idSoporte}/estado?estado=Aprobado`);
+            const nuevos = [...resultadosIA];
+            nuevos[idx].estado = 'Aprobado';
+            setResultadosIA(nuevos);
+            showAlert({ message: 'Documento aprobado en auditoría', status: 'success' });
+        } catch (error) {
+            showAlert({ message: 'Error al aprobar documento', status: 'error' });
+        }
+    };
+
+    const handleRechazarDocumento = async (idx, idSoporte) => {
+        try {
+            await http.put(`/soportes/${idSoporte}/estado?estado=Rechazado`);
+            const nuevos = [...resultadosIA];
+            nuevos[idx].estado = 'Rechazado';
+            setResultadosIA(nuevos);
+            showAlert({ message: 'Documento rechazado', status: 'error' });
+        } catch (error) {
+            showAlert({ message: 'Error al rechazar documento', status: 'error' });
         }
     };
 
@@ -171,6 +227,10 @@ export const HojaVida = () => {
         { id: 'competencias', label: 'Competencias', icon: Briefcase, disabled: !hojaVidaId },
         { id: 'soportes', label: 'Soportes IA', icon: Bot, disabled: !hojaVidaId }
     ];
+
+    if (isAuditor) {
+        tabs.push({ id: 'auditoria', label: 'Auditoría Doc.', icon: CheckCircle, disabled: !hojaVidaId });
+    }
 
     return (
         <div className="min-h-screen bg-gray-50/50 p-6 md:p-8">
@@ -201,80 +261,83 @@ export const HojaVida = () => {
                             <input
                                 type="text"
                                 className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm outline-none bg-gray-50 focus:bg-white placeholder:text-gray-400"
-                                placeholder="Escribe el número de documento y presiona Enter para autocompletar..."
+                                placeholder="Escribe el número de documento y presiona Enter para buscar..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </form>
 
                         <div className="flex flex-wrap items-center gap-3">
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => {}}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm shadow-blue-200 transition-all text-sm font-medium"
-                            >
-                                <Download className="h-4 w-4" />
-                                <span>Reporte de brechas</span>
-                            </motion.button>
-
-                            <div className="relative">
+                            {isAuditor && (
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    onClick={() => setShowReportsMenu(!showReportsMenu)}
-                                    onBlur={() => setTimeout(() => setShowReportsMenu(false), 200)}
-                                    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 rounded-lg shadow-sm transition-all text-sm font-medium"
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm shadow-blue-200 transition-all text-sm font-medium"
                                 >
-                                    <FileText className="h-4 w-4 text-gray-500" />
-                                    <span>Reportes</span>
-                                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${showReportsMenu ? 'rotate-180' : ''}`} />
+                                    <Download className="h-4 w-4" />
+                                    <span>Reporte de brechas</span>
                                 </motion.button>
+                            )}
 
-                                <AnimatePresence>
-                                    {showReportsMenu && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                            transition={{ duration: 0.15 }}
-                                            className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 ring-1 ring-black/5 overflow-hidden z-50 origin-top-right"
-                                        >
-                                            <div className="py-2">
-                                                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50/50">
-                                                    Disponibles
+                            {isAuditor && (
+                                <div className="relative">
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setShowReportsMenu(!showReportsMenu)}
+                                        onBlur={() => setTimeout(() => setShowReportsMenu(false), 200)}
+                                        className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 rounded-lg shadow-sm transition-all text-sm font-medium"
+                                    >
+                                        <FileText className="h-4 w-4 text-gray-500" />
+                                        <span>Reportes</span>
+                                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${showReportsMenu ? 'rotate-180' : ''}`} />
+                                    </motion.button>
+
+                                    <AnimatePresence>
+                                        {showReportsMenu && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                transition={{ duration: 0.15 }}
+                                                className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 ring-1 ring-black/5 overflow-hidden z-50 origin-top-right"
+                                            >
+                                                <div className="py-2">
+                                                    <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50/50">
+                                                        Disponibles
+                                                    </div>
+                                                    {reports.map((report) => (
+                                                        <button
+                                                            key={report.id}
+                                                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left group"
+                                                        >
+                                                            <div className="p-2 bg-gray-50 rounded-lg group-hover:bg-white group-hover:shadow-sm transition-all">
+                                                                <report.icon className="h-4 w-4 text-gray-500 group-hover:text-blue-600" />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="font-medium">{report.id}</span>
+                                                                <span className="text-xs text-gray-500 group-hover:text-blue-600/80 line-clamp-1">{report.label}</span>
+                                                            </div>
+                                                        </button>
+                                                    ))}
                                                 </div>
-                                                {reports.map((report) => (
-                                                    <button
-                                                        key={report.id}
-                                                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left group"
-                                                    >
-                                                        <div className="p-2 bg-gray-50 rounded-lg group-hover:bg-white group-hover:shadow-sm transition-all">
-                                                            <report.icon className="h-4 w-4 text-gray-500 group-hover:text-blue-600" />
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium">{report.id}</span>
-                                                            <span className="text-xs text-gray-500 group-hover:text-blue-600/80 line-clamp-1">{report.label}</span>
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="flex border-b border-gray-200">
+                    <div className="flex border-b border-gray-200 overflow-x-auto hide-scrollbar">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 disabled={tab.disabled}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors ${
+                                className={`flex items-center whitespace-nowrap gap-2 px-6 py-4 text-sm font-medium transition-colors ${
                                     activeTab === tab.id
                                         ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50'
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -292,34 +355,36 @@ export const HojaVida = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700">Nombres *</label>
-                                        <input required type="text" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" value={datosCV.nombres} onChange={(e) => setDatosCV({...datosCV, nombres: e.target.value})} />
+                                        <input required type="text" disabled={!isAuditor && hojaVidaId} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-gray-100" value={datosCV.nombres} onChange={(e) => setDatosCV({...datosCV, nombres: e.target.value})} />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700">Apellidos *</label>
-                                        <input required type="text" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" value={datosCV.apellidos} onChange={(e) => setDatosCV({...datosCV, apellidos: e.target.value})} />
+                                        <input required type="text" disabled={!isAuditor && hojaVidaId} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-gray-100" value={datosCV.apellidos} onChange={(e) => setDatosCV({...datosCV, apellidos: e.target.value})} />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700">Cédula *</label>
-                                        <input required type="text" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" value={datosCV.cedula} onChange={(e) => setDatosCV({...datosCV, cedula: e.target.value})} />
+                                        <input required type="text" disabled={!isAuditor && hojaVidaId} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-gray-100" value={datosCV.cedula} onChange={(e) => setDatosCV({...datosCV, cedula: e.target.value})} />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700">Correo Electrónico</label>
-                                        <input type="email" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" value={datosCV.correoElectronico} onChange={(e) => setDatosCV({...datosCV, correoElectronico: e.target.value})} />
+                                        <input type="email" disabled={!isAuditor && hojaVidaId} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-gray-100" value={datosCV.correoElectronico} onChange={(e) => setDatosCV({...datosCV, correoElectronico: e.target.value})} />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700">Fecha Nacimiento *</label>
-                                        <input required type="date" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" value={datosCV.fechaNacimiento} onChange={(e) => setDatosCV({...datosCV, fechaNacimiento: e.target.value})} />
+                                        <input required type="date" disabled={!isAuditor && hojaVidaId} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-gray-100" value={datosCV.fechaNacimiento} onChange={(e) => setDatosCV({...datosCV, fechaNacimiento: e.target.value})} />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-gray-700">Fecha Ingreso *</label>
-                                        <input required type="date" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" value={datosCV.fechaIngreso} onChange={(e) => setDatosCV({...datosCV, fechaIngreso: e.target.value})} />
+                                        <input required type="date" disabled={!isAuditor && hojaVidaId} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none disabled:bg-gray-100" value={datosCV.fechaIngreso} onChange={(e) => setDatosCV({...datosCV, fechaIngreso: e.target.value})} />
                                     </div>
                                 </div>
-                                <div className="flex justify-end pt-4">
-                                    <button type="submit" className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm">
-                                        {hojaVidaId ? 'Actualizar Datos' : 'Guardar y Continuar'}
-                                    </button>
-                                </div>
+                                {(isAuditor || !hojaVidaId) && (
+                                    <div className="flex justify-end pt-4">
+                                        <button type="submit" className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm">
+                                            {hojaVidaId ? 'Actualizar Datos' : 'Guardar y Continuar'}
+                                        </button>
+                                    </div>
+                                )}
                             </form>
                         )}
 
@@ -384,7 +449,7 @@ export const HojaVida = () => {
                             <div className="max-w-3xl mx-auto animate-fade-in">
                                 <div className="bg-indigo-50 text-indigo-800 p-4 rounded-lg mb-6 flex gap-3 text-sm">
                                     <Bot className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                                    <p>Sube un único archivo PDF que contenga todos los soportes mezclados (Cédula, Diplomas, etc.). La Inteligencia Artificial se encargará de leer, separar y clasificar cada página automáticamente.</p>
+                                    <p>Sube un único archivo PDF que contenga todos los soportes mezclados. La Inteligencia Artificial separará y clasificará cada página automáticamente.</p>
                                 </div>
                                 <form onSubmit={handleProcesarIA} className="space-y-6">
                                     <div className="border-2 border-dashed border-indigo-200 bg-white rounded-xl p-8 hover:border-indigo-400 transition-colors text-center">
@@ -396,26 +461,50 @@ export const HojaVida = () => {
                                     </button>
                                 </form>
 
-                                {resultadosIA.length > 0 && (
-                                    <div className="mt-8 border border-gray-200 rounded-xl overflow-hidden">
-                                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-medium text-gray-700 flex items-center justify-between">
-                                            <span>Documentos Detectados</span>
-                                            <span className="bg-green-100 text-green-700 py-1 px-3 rounded-full text-xs font-bold">{resultadosIA.length} Archivos</span>
-                                        </div>
-                                        <ul className="divide-y divide-gray-100">
-                                            {resultadosIA.map((doc, idx) => (
-                                                <li key={idx} className="p-4 flex items-center justify-between hover:bg-gray-50">
-                                                    <div className="flex items-center gap-3">
-                                                        <FileText className="w-5 h-5 text-red-400" />
-                                                        <span className="font-medium text-slate-700">{doc.tipoDocumento}</span>
-                                                    </div>
-                                                    <span className="text-xs text-gray-500 bg-white border border-gray-200 px-2 py-1 rounded">
-                                                        {(doc.tamano / 1024).toFixed(1)} KB
-                                                    </span>
-                                                </li>
-                                            ))}
-                                        </ul>
+                                {resultadosIA.length > 0 && !isAuditor && (
+                                    <div className="mt-8 border border-gray-200 rounded-xl overflow-hidden bg-gray-50 p-6 text-center text-gray-600">
+                                        Soportes enviados exitosamente. Pendientes de revisión por Recursos Humanos.
                                     </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'auditoria' && isAuditor && (
+                            <div className="animate-fade-in">
+                                <div className="mb-6">
+                                    <h3 className="text-lg font-bold text-gray-800">Revisión de Soportes Subidos</h3>
+                                    <p className="text-sm text-gray-500">Valida los documentos procesados por la IA o cargados por el empleado.</p>
+                                </div>
+                                
+                                {resultadosIA.length === 0 ? (
+                                    <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl text-gray-400">
+                                        No hay documentos pendientes de revisión en este momento.
+                                    </div>
+                                ) : (
+                                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {resultadosIA.map((doc, idx) => (
+                                            <li key={idx} className={`p-4 rounded-xl border flex flex-col gap-3 ${doc.estado === 'Aprobado' ? 'border-green-200 bg-green-50/30' : doc.estado === 'Rechazado' ? 'border-red-200 bg-red-50/30' : 'border-gray-200 bg-white'}`}>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileText className="w-5 h-5 text-gray-400" />
+                                                        <span className="font-semibold text-gray-700">{doc.tipoDocumento || 'Documento Generico'}</span>
+                                                    </div>
+                                                    <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded">
+                                                        {(doc.tamano ? (doc.tamano / 1024).toFixed(1) : 0)} KB
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="flex gap-2 mt-2 pt-3 border-t border-gray-100">
+                                                    <button onClick={() => handleAprobarDocumento(idx, doc.id)} disabled={doc.estado === 'Aprobado'} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded-lg transition-colors disabled:opacity-50">
+                                                        <CheckCircle className="w-4 h-4" /> Aprobar
+                                                    </button>
+                                                    <button onClick={() => handleRechazarDocumento(idx, doc.id)} disabled={doc.estado === 'Rechazado'} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-lg transition-colors disabled:opacity-50">
+                                                        <XCircle className="w-4 h-4" /> Rechazar
+                                                    </button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 )}
                             </div>
                         )}

@@ -1,10 +1,8 @@
 import ConstructionPage from '../components/ConstructionPage';
-// Talento Humano
 import { PerfilesCargos } from '../modules/talentoHumano/pages/PerfilesCargos';
 import { HojaVida } from '../modules/talentoHumano/pages/HojaVida';
 import { Organigrama } from '../modules/talentoHumano/pages/Organigrama';
 import { VerDetalleCargo } from '../modules/talentoHumano/pages/VerDetalleCargo';
-// calidad
 import { TipoDocumentos } from '../modules/calidad/pages/TipoDocumentos';
 import { SolicitarDocumento } from '../modules/calidad/pages/SolicitarDocumento';
 import { RevisionDocumento } from '../modules/calidad/pages/RevisionDocumento';
@@ -14,13 +12,12 @@ import { ListadosUnicos } from '../modules/calidad/pages/ListadosUnicos';
 import { DocumentosExternos } from '../modules/calidad/pages/DocumentosExternos';
 import { DiligenciarFormato } from '../modules/calidad/pages/DiligenciarFormato';
 import { Definiciones } from '../modules/calidad/pages/Definiciones';
-//miCuenta
 import { MiPerfil } from '../modules/miCuenta/pages/MiPerfil';
-
-//configuracion
 import { TipoDocumento } from '../modules/configuracion/pages/TipoDocumento';
 import { TipoContrato } from '../modules/configuracion/pages/TipoContrato';
 import { Usuarios } from '../modules/configuracion/pages/Usuarios';
+
+import { MapaProcesos } from '../modules/configuracion/pages/MapaProcesos';
 
 export const ROUTES = {
   MI_CUENTA: {
@@ -52,7 +49,6 @@ export const ROUTES = {
       element: <VerDetalleCargo />,
     },
   },
-
   CALIDAD: {
     TIPOS_DOCUMENTO: {
       path: '/calidad/tipos-documento',
@@ -100,7 +96,6 @@ export const ROUTES = {
       element: <Definiciones />,
     },
   },
-
   CONFIGURACION: {
     USUARIOS: {
       path: '/configuracion/usuarios',
@@ -110,7 +105,7 @@ export const ROUTES = {
     PROCESOS: {
       path: '/configuracion/procesos',
       title: 'Gestión de Procesos',
-      element: <ConstructionPage title="Gestión de Procesos" />,
+      element: <MapaProcesos />,
     },
     MACROPROCESOS: {
       path: '/configuracion/macroprocesos',
@@ -135,7 +130,7 @@ export const ROUTES = {
     TIPO_CONTRATO: {
       path: '/configuracion/tipo-contrato',
       title: 'Gestión de Tipo Contrato',
-      element: <TipoContrato title="Gestión de Cargos" />,
+      element: <TipoContrato title="Gestión de Tipo Contrato" />,
     },
   },
 };
