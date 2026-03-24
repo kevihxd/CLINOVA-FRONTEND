@@ -1,10 +1,22 @@
 import React, { useState } from 'react';
-import { Search, FileText, ArrowLeft, User, Camera, Briefcase, Bot, Trash2, Edit2, Save, X, Eye } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Search, User, Bot, ArrowLeft, FileText, Trash2, Edit2, Save, X, Eye, Upload, Folder, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
-import { UsuariosService } from '../../configuracion/services/usuarios.service';
+
+const CATEGORIAS_SOPORTES = [
+    "Acta de grado Profesional", "Acta grado de Bachiller", "Acta grado Título Especialista",
+    "Afiliación ARL", "Afiliación EPS", "Afiliación Pensión", "Antecedentes",
+    "Caja de compensación", "Carnet vacunación", "Cédula de ciudadanía", "Certificación Bancaria",
+    "Certificado de curso básico de reanimación cardiopulmonar", "Certificado de Formación",
+    "Certificado Experiencia Laboral", "Cesantías", "Contrato", "Convalidación", "Diploma Bachiller",
+    "Exámenes Medico Ocupacional", "Formato de requisitos para hoja de vida y contratación",
+    "Fundación", "Incapacidades", "Libreta Militar", "Paz y salvo", "PESV",
+    "Póliza de responsabilidad Civil", "Preaviso", "Procesos disciplinarios",
+    "Resolución expedida por Instituto departamental de salud", "RUT", "Soportes contables",
+    "Tarjeta profesional", "Título de profesional", "Título Especialista", "Vacaciones",
+    "Varios y/o anexos", "Verificación en Rethus", "Otros Soportes"
+];
 
 export const HojaVida = () => {
     const navigate = useNavigate();
@@ -15,47 +27,19 @@ export const HojaVida = () => {
     const [hojaVidaId, setHojaVidaId] = useState(null);
     const [cvNombre, setCvNombre] = useState('');
 
-    const [datosCV, setDatosCV] = useState({ nombres: '', apellidos: '', cedula: '', fechaNacimiento: '', fechaIngreso: '', correoElectronico: '' });
-    const [fotoFile, setFotoFile] = useState(null);
-    const [educacion, setEducacion] = useState({ nivelEstudio: '', institucion: '', titulo: '', fechaInicio: '', fechaFin: '' });
-    const [experiencia, setExperiencia] = useState({ empresa: '', cargo: '', fechaInicio: '', fechaFin: '', funciones: '' });
-    const [loteFile, setLoteFile] = useState(null);
+    const [datosCV, setDatosCV] = useState({
+        cedula: '', nombres: '', apellidos: '', direccionResidencia: '',
+        telefono: '', correoElectronico: '', contactoEmergencia: '',
+        telefonoContactoEmergencia: '', arl: '', eps: '', afp: '', cajaCompensacion: '',
+        fechaIngreso: '', tipoContrato: '', sedeId: '', cargoId: '', salario: '',
+        subsidioTransporte: '', estado: '', fechaRetiro: '', motivoRetiro: ''
+    });
     
+    const [loteFile, setLoteFile] = useState(null);
     const [resultadosIA, setResultadosIA] = useState([]);
     const [procesandoIA, setProcesandoIA] = useState(false);
     const [editingDocId, setEditingDocId] = useState(null);
     const [editDocValue, setEditDocValue] = useState('');
-
-    const buscarEnUsuarios = async (cedula) => {
-        try {
-            const data = await UsuariosService.getAll();
-            const usuariosReales = Array.isArray(data) ? data : (data?.data || []);
-            const userFound = usuariosReales.find(u => (u.persona?.numero_documento?.toString() === cedula) || (u.cedula?.toString() === cedula));
-
-            if (userFound) {
-                setDatosCV({
-                    nombres: `${userFound.persona?.primer_nombre || ''} ${userFound.persona?.segundo_nombre || ''}`.trim(),
-                    apellidos: `${userFound.persona?.primer_apellido || ''} ${userFound.persona?.segundo_apellido || ''}`.trim(),
-                    cedula: userFound.persona?.numero_documento || userFound.cedula || '',
-                    fechaNacimiento: userFound.persona?.fecha_nacimiento || '',
-                    fechaIngreso: '', 
-                    correoElectronico: userFound.persona?.correo_electronico || ''
-                });
-                setHojaVidaId(null);
-                setCvNombre('');
-                setResultadosIA([]);
-                showAlert({ message: 'Datos pre-cargados desde usuario. Por favor guarde para crear la Hoja de Vida.', status: 'info' });
-            } else {
-                setDatosCV(prev => ({ ...prev, cedula: cedula }));
-                setHojaVidaId(null);
-                setCvNombre('');
-                setResultadosIA([]);
-                showAlert({ message: 'No se encontraron registros. Puede crear uno nuevo.', status: 'info' });
-            }
-        } catch (error) {
-            showAlert({ message: 'Error al buscar en usuarios.', status: 'error' });
-        }
-    };
 
     const handleSearch = async (e) => {
         e.preventDefault();
@@ -64,11 +48,22 @@ export const HojaVida = () => {
 
         try {
             const response = await http.get(`/hojas-vida/cedula/${cedulaTrim}`);
-            if ((response.status === 'SUCCESS' || response.data) && response.data) {
+            if (response.data) {
                 const hv = response.data.data || response.data;
                 setHojaVidaId(hv.id);
                 setCvNombre(`${hv.nombres} ${hv.apellidos}`);
-                setDatosCV({ nombres: hv.nombres || '', apellidos: hv.apellidos || '', cedula: hv.cedula || '', fechaNacimiento: hv.fechaNacimiento || '', fechaIngreso: hv.fechaIngreso || '', correoElectronico: hv.correoElectronico || '' });
+                setDatosCV({
+                    cedula: hv.cedula || '', nombres: hv.nombres || '', apellidos: hv.apellidos || '', 
+                    direccionResidencia: hv.direccionResidencia || '', telefono: hv.telefono || '', 
+                    correoElectronico: hv.correoElectronico || '', contactoEmergencia: hv.contactoEmergencia || '', 
+                    telefonoContactoEmergencia: hv.telefonoContactoEmergencia || '', arl: hv.arl || '', 
+                    eps: hv.eps || '', afp: hv.afp || '', cajaCompensacion: hv.cajaCompensacion || '',
+                    fechaIngreso: hv.fechaIngreso || '', tipoContrato: hv.tipoContrato || '', 
+                    sedeId: hv.sedes && hv.sedes.length > 0 ? hv.sedes[0].id : '', 
+                    cargoId: hv.cargos && hv.cargos.length > 0 ? hv.cargos[0].id : '', 
+                    salario: hv.salario || '', subsidioTransporte: hv.subsidioTransporte || '',
+                    estado: hv.estado || '', fechaRetiro: hv.fechaRetiro || '', motivoRetiro: hv.motivoRetiro || ''
+                });
 
                 try {
                     const soportesRes = await http.get(`/soportes/hoja-vida/${hv.id}`);
@@ -79,24 +74,34 @@ export const HojaVida = () => {
                 showAlert({ message: 'Hoja de Vida encontrada', status: 'success' });
             }
         } catch (error) {
-            buscarEnUsuarios(cedulaTrim);
+            setDatosCV(prev => ({ ...prev, cedula: cedulaTrim }));
+            setHojaVidaId(null);
+            setCvNombre('');
+            setResultadosIA([]);
+            showAlert({ message: 'No se encontraron registros. Puede crear uno nuevo.', status: 'info' });
         }
     };
 
     const handleCrearCV = async (e) => {
         e.preventDefault();
         try {
-            if (hojaVidaId) {
-                await http.put(`/hojas-vida/${hojaVidaId}`, datosCV);
-                setCvNombre(`${datosCV.nombres} ${datosCV.apellidos}`);
+            let idActual = hojaVidaId;
+            const payload = {
+                ...datosCV,
+                cargosIds: datosCV.cargoId ? [parseInt(datosCV.cargoId)] : [],
+                sedesIds: datosCV.sedeId ? [parseInt(datosCV.sedeId)] : []
+            };
+
+            if (idActual) {
+                await http.put(`/hojas-vida/${idActual}`, payload);
                 showAlert({ message: 'Datos actualizados exitosamente', status: 'success' });
             } else {
-                const response = await http.post('/hojas-vida', datosCV);
-                const idGenerado = response.data?.data?.id || response.data?.id || response.id;
-                setHojaVidaId(idGenerado);
-                setCvNombre(`${datosCV.nombres} ${datosCV.apellidos}`);
+                const response = await http.post('/hojas-vida', payload);
+                idActual = response.data?.data?.id || response.data?.id || response.id;
+                setHojaVidaId(idActual);
                 showAlert({ message: 'Hoja de Vida creada exitosamente', status: 'success' });
             }
+            setCvNombre(`${datosCV.nombres} ${datosCV.apellidos}`);
         } catch (error) {
             showAlert({ message: 'Error al guardar la Hoja de Vida', status: 'error' });
         }
@@ -112,168 +117,240 @@ export const HojaVida = () => {
 
         try {
             const response = await http.post(`/soportes-inteligentes/procesar-lote/${hojaVidaId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-            if (response.status === 'SUCCESS' || response.data) {
+            if (response.data) {
                 const nuevosSoportes = Array.isArray(response.data) ? response.data : (response.data?.data || []);
                 setResultadosIA(prev => [...prev, ...nuevosSoportes]);
-                showAlert({ message: 'Documentos divididos y clasificados automáticamente', status: 'success' });
+                showAlert({ message: 'Documentos divididos y clasificados', status: 'success' });
                 setLoteFile(null);
             }
         } catch (error) {
-            showAlert({ message: 'Error al procesar los documentos con IA', status: 'error' });
+            showAlert({ message: 'Error al procesar los documentos', status: 'error' });
         } finally {
             setProcesandoIA(false);
         }
     };
 
-    const handleEliminarDocumento = async (idx, idSoporte) => {
-        if (!window.confirm('¿Estás seguro de que deseas eliminar este documento de forma permanente?')) return;
+    const handleManualUpload = async (e, categoria) => {
+        const file = e.target.files[0];
+        if (!file || !hojaVidaId) return;
+
+        const formData = new FormData();
+        formData.append('archivo', file);
+        formData.append('datos', new Blob([JSON.stringify({ tipoDocumento: categoria, hojaVidaId: hojaVidaId })], { type: 'application/json' }));
+
+        try {
+            const response = await http.post('/soportes', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            const nuevoDoc = response.data?.data || response.data;
+            setResultadosIA(prev => [...prev, nuevoDoc]);
+            showAlert({ message: 'Documento subido exitosamente', status: 'success' });
+        } catch (error) {
+            showAlert({ message: 'Error al subir documento', status: 'error' });
+        }
+    };
+
+    const handleEliminarDocumento = async (idSoporte) => {
+        if (!window.confirm('¿Eliminar este documento de forma permanente?')) return;
         try {
             await http.delete(`/soportes/${idSoporte}`);
-            const nuevos = [...resultadosIA];
-            nuevos.splice(idx, 1);
-            setResultadosIA(nuevos);
+            setResultadosIA(prev => prev.filter(doc => doc.id !== idSoporte));
             showAlert({ message: 'Documento eliminado exitosamente', status: 'success' });
         } catch (error) {
             showAlert({ message: 'Error al eliminar documento', status: 'error' });
         }
     };
 
-    const handleGuardarNombre = async (idx, idSoporte) => {
+    const handleGuardarNombre = async (idSoporte) => {
         if (!editDocValue.trim()) return;
         try {
             await http.put(`/soportes/${idSoporte}/tipo?tipoDocumento=${encodeURIComponent(editDocValue)}`);
-            const nuevos = [...resultadosIA];
-            nuevos[idx].tipoDocumento = editDocValue;
-            setResultadosIA(nuevos);
+            setResultadosIA(prev => prev.map(doc => doc.id === idSoporte ? { ...doc, tipoDocumento: editDocValue } : doc));
             setEditingDocId(null);
-            showAlert({ message: 'Nombre actualizado correctamente', status: 'success' });
+            showAlert({ message: 'Nombre actualizado', status: 'success' });
         } catch (error) {
-            showAlert({ message: 'Error al actualizar el nombre', status: 'error' });
+            showAlert({ message: 'Error al actualizar nombre', status: 'error' });
         }
     };
 
-    const tabs = [
-        { id: 'datos', label: 'Datos Generales', icon: User, disabled: false },
-        { id: 'foto', label: 'Fotografía', icon: Camera, disabled: !hojaVidaId },
-        { id: 'competencias', label: 'Competencias', icon: Briefcase, disabled: !hojaVidaId },
-        { id: 'soportes', label: 'Soportes IA', icon: Bot, disabled: !hojaVidaId }
-    ];
+    const verDocumento = (rutaArchivo) => {
+        window.open(`http://localhost:8080/${rutaArchivo}`, '_blank');
+    };
+
+    const inputClass = "w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white";
+    const labelClass = "text-xs font-semibold text-gray-600 mb-1.5 block";
 
     return (
-        <div className="min-h-screen bg-gray-50/50 p-6 md:p-8">
-            <div className="max-w-7xl mx-auto space-y-8">
+        <div className="min-h-screen bg-gray-50 p-6 md:p-8">
+            <div className="max-w-7xl mx-auto space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <button onClick={() => navigate(-1)} className="p-2 bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full border border-slate-200 shadow-sm transition-all"><ArrowLeft className="w-5 h-5" /></button>
+                    <button onClick={() => navigate(-1)} className="p-2 bg-white text-gray-500 hover:bg-gray-100 rounded-full shadow-sm transition-all"><ArrowLeft className="w-5 h-5" /></button>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Hoja de Vida</h1>
-                        <p className="text-gray-500 mt-1 text-sm md:text-base">{hojaVidaId ? `Perfil: ${cvNombre}` : 'Gestión y creación de colaboradores'}</p>
+                        <h1 className="text-2xl font-bold text-gray-800">Gestión de Hoja de Vida</h1>
+                        <p className="text-gray-500 text-sm">{hojaVidaId ? `Perfil activo: ${cvNombre}` : 'Registro de nuevo colaborador'}</p>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sticky top-0 z-10 backdrop-blur-3xl bg-white/80">
-                    <form onSubmit={handleSearch} className="relative w-full max-w-2xl group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-blue-500 transition-colors"><Search className="h-5 w-5" /></div>
-                        <input type="text" className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm outline-none bg-gray-50 focus:bg-white placeholder:text-gray-400" placeholder="Escribe el número de documento y presiona Enter para buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <form onSubmit={handleSearch} className="relative w-full max-w-xl">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><Search className="h-4 w-4" /></div>
+                        <input type="text" className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 text-sm outline-none" placeholder="Buscar empleado por número de cédula..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </form>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="flex border-b border-gray-200 overflow-x-auto hide-scrollbar">
-                        {tabs.map((tab) => (
-                            <button key={tab.id} disabled={tab.disabled} onClick={() => setActiveTab(tab.id)} className={`flex items-center whitespace-nowrap gap-2 px-6 py-4 text-sm font-medium transition-colors ${activeTab === tab.id ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'} ${tab.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                <tab.icon className="w-4 h-4" />{tab.label}
-                            </button>
-                        ))}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="flex border-b border-gray-200 bg-gray-50">
+                        <button onClick={() => setActiveTab('datos')} className={`flex items-center gap-2 px-6 py-3 text-sm font-bold transition-colors ${activeTab === 'datos' ? 'border-b-2 border-blue-600 text-blue-600 bg-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                            <User className="w-4 h-4" /> Datos Generales
+                        </button>
+                        <button disabled={!hojaVidaId} onClick={() => setActiveTab('soportes')} className={`flex items-center gap-2 px-6 py-3 text-sm font-bold transition-colors ${activeTab === 'soportes' ? 'border-b-2 border-blue-600 text-blue-600 bg-white' : 'text-gray-500 hover:text-gray-700'} ${!hojaVidaId ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                            <Bot className="w-4 h-4" /> Soportes
+                        </button>
                     </div>
 
-                    <div className="p-6 md:p-8">
+                    <div className="p-6">
                         {activeTab === 'datos' && (
-                            <form onSubmit={handleCrearCV} className="space-y-6 animate-fade-in">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2"><label className="text-sm font-medium text-gray-700">Nombres *</label><input required type="text" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none" value={datosCV.nombres} onChange={(e) => setDatosCV({...datosCV, nombres: e.target.value})} /></div>
-                                    <div className="space-y-2"><label className="text-sm font-medium text-gray-700">Apellidos *</label><input required type="text" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none" value={datosCV.apellidos} onChange={(e) => setDatosCV({...datosCV, apellidos: e.target.value})} /></div>
-                                    <div className="space-y-2"><label className="text-sm font-medium text-gray-700">Cédula *</label><input required type="text" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none" value={datosCV.cedula} onChange={(e) => setDatosCV({...datosCV, cedula: e.target.value})} /></div>
-                                    <div className="space-y-2"><label className="text-sm font-medium text-gray-700">Correo Electrónico</label><input type="email" className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none" value={datosCV.correoElectronico} onChange={(e) => setDatosCV({...datosCV, correoElectronico: e.target.value})} /></div>
+                            <form onSubmit={handleCrearCV} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                                    
+                                    <div className="space-y-4">
+                                        <div><label className={labelClass}>Cédula de ciudadanía</label><input required type="text" className={inputClass} value={datosCV.cedula} onChange={(e) => setDatosCV({...datosCV, cedula: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Nombres</label><input required type="text" className={inputClass} value={datosCV.nombres} onChange={(e) => setDatosCV({...datosCV, nombres: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Apellidos</label><input required type="text" className={inputClass} value={datosCV.apellidos} onChange={(e) => setDatosCV({...datosCV, apellidos: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Dirección</label><input type="text" className={inputClass} value={datosCV.direccionResidencia} onChange={(e) => setDatosCV({...datosCV, direccionResidencia: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Teléfono(s)</label><input type="text" className={inputClass} value={datosCV.telefono} onChange={(e) => setDatosCV({...datosCV, telefono: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Correo electrónico</label><input type="email" className={inputClass} value={datosCV.correoElectronico} onChange={(e) => setDatosCV({...datosCV, correoElectronico: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Contacto de emergencia</label><input type="text" className={inputClass} value={datosCV.contactoEmergencia} onChange={(e) => setDatosCV({...datosCV, contactoEmergencia: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Tel. Contacto Emergencia</label><input type="text" className={inputClass} value={datosCV.telefonoContactoEmergencia} onChange={(e) => setDatosCV({...datosCV, telefonoContactoEmergencia: e.target.value})} /></div>
+                                        <div><label className={labelClass}>ARL</label><input type="text" className={inputClass} value={datosCV.arl} onChange={(e) => setDatosCV({...datosCV, arl: e.target.value})} /></div>
+                                        <div><label className={labelClass}>EPS</label><input type="text" className={inputClass} value={datosCV.eps} onChange={(e) => setDatosCV({...datosCV, eps: e.target.value})} /></div>
+                                        <div><label className={labelClass}>AFP</label><input type="text" className={inputClass} value={datosCV.afp} onChange={(e) => setDatosCV({...datosCV, afp: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Caja de compensación</label><input type="text" className={inputClass} value={datosCV.cajaCompensacion} onChange={(e) => setDatosCV({...datosCV, cajaCompensacion: e.target.value})} /></div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div><label className={labelClass}>Fecha de ingreso</label><input type="date" className={inputClass} value={datosCV.fechaIngreso} onChange={(e) => setDatosCV({...datosCV, fechaIngreso: e.target.value})} /></div>
+                                        <div>
+                                            <label className={labelClass}>Tipo de contrato</label>
+                                            <select className={inputClass} value={datosCV.tipoContrato} onChange={(e) => setDatosCV({...datosCV, tipoContrato: e.target.value})}>
+                                                <option value="">Seleccione...</option>
+                                                <option value="Fijo">Término Fijo</option>
+                                                <option value="Indefinido">Término Indefinido</option>
+                                                <option value="Prestacion">Prestación de Servicios</option>
+                                            </select>
+                                        </div>
+                                        <div><label className={labelClass}>Sede</label><input type="text" className={inputClass} value={datosCV.sedeId} onChange={(e) => setDatosCV({...datosCV, sedeId: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Cargo</label><input type="text" className={inputClass} value={datosCV.cargoId} onChange={(e) => setDatosCV({...datosCV, cargoId: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Salario</label><input type="number" className={inputClass} value={datosCV.salario} onChange={(e) => setDatosCV({...datosCV, salario: e.target.value})} /></div>
+                                        <div>
+                                            <label className={labelClass}>Subsidio de transporte</label>
+                                            <select className={inputClass} value={datosCV.subsidioTransporte} onChange={(e) => setDatosCV({...datosCV, subsidioTransporte: e.target.value})}>
+                                                <option value="">Seleccione...</option>
+                                                <option value="Si">Sí</option>
+                                                <option value="No">No</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Estado</label>
+                                            <select className={inputClass} value={datosCV.estado} onChange={(e) => setDatosCV({...datosCV, estado: e.target.value})}>
+                                                <option value="">Seleccione...</option>
+                                                <option value="Activo">Activo</option>
+                                                <option value="Inactivo">Inactivo</option>
+                                            </select>
+                                        </div>
+                                        <div><label className={labelClass}>Fecha de retiro</label><input type="date" className={inputClass} value={datosCV.fechaRetiro} onChange={(e) => setDatosCV({...datosCV, fechaRetiro: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Motivo de retiro</label><input type="text" className={inputClass} value={datosCV.motivoRetiro} onChange={(e) => setDatosCV({...datosCV, motivoRetiro: e.target.value})} /></div>
+                                    </div>
                                 </div>
-                                <div className="flex justify-end pt-4"><button type="submit" className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm">Guardar Datos</button></div>
+                                <div className="flex justify-end pt-6 border-t border-gray-200">
+                                    <button type="submit" className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded shadow-sm hover:bg-blue-700 transition-colors">
+                                        Guardar
+                                    </button>
+                                </div>
                             </form>
                         )}
 
                         {activeTab === 'soportes' && (
-                            <div className="space-y-10 animate-fade-in">
-                                <div className="max-w-3xl mx-auto">
-                                    <form onSubmit={handleProcesarIA} className="space-y-6">
-                                        <div className="border-2 border-dashed border-indigo-200 bg-white rounded-xl p-8 hover:border-indigo-400 transition-colors text-center">
-                                            <FileText className="w-12 h-12 text-indigo-300 mx-auto mb-4" />
-                                            <input required type="file" accept="application/pdf" onChange={(e) => setLoteFile(e.target.files[0])} className="block w-full max-w-sm mx-auto text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
-                                            <p className="mt-3 text-xs text-gray-400">Sube un PDF con todos los soportes. La IA los dividirá automáticamente.</p>
-                                        </div>
-                                        <button disabled={procesandoIA} type="submit" className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm disabled:opacity-70 flex justify-center items-center gap-2">
-                                            {procesandoIA ? <><Bot className="w-5 h-5 animate-bounce"/> Extrayendo y clasificando documentos...</> : 'Procesar Soportes con IA'}
-                                        </button>
-                                    </form>
-                                </div>
-
-                                {resultadosIA.length > 0 && (
-                                    <div className="pt-6 border-t border-gray-100">
-                                        <div className="mb-6 flex justify-between items-end">
-                                            <div>
-                                                <h3 className="text-xl font-bold text-gray-800">Documentos del Colaborador</h3>
-                                                <p className="text-sm text-gray-500 mt-1">Archivos extraídos y clasificados por Inteligencia Artificial.</p>
-                                            </div>
-                                            <span className="px-3 py-1 bg-blue-50 text-blue-700 text-sm font-semibold rounded-full border border-blue-100">
-                                                {resultadosIA.length} Documentos
-                                            </span>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                            {resultadosIA.map((doc, idx) => (
-                                                <div key={idx} className="flex flex-col border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-all group">
-                                                    
-                                                    <div className="h-40 bg-gradient-to-br from-slate-50 to-slate-100 border-b border-slate-200 relative flex items-center justify-center p-4">
-                                                        <FileText className="w-16 h-16 text-slate-300 drop-shadow-sm group-hover:scale-110 transition-transform duration-300" />
-                                                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
-                                                            <button className="flex items-center gap-2 px-4 py-2 bg-white text-slate-800 text-sm font-bold rounded-lg shadow-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">
-                                                                <Eye className="w-4 h-4" /> Ver Archivo
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="p-5 flex flex-col gap-4">
-                                                        {editingDocId === doc.id ? (
-                                                            <div className="flex gap-2">
-                                                                <input 
-                                                                    type="text" 
-                                                                    autoFocus
-                                                                    value={editDocValue} 
-                                                                    onChange={(e) => setEditDocValue(e.target.value)}
-                                                                    className="flex-1 px-3 py-1.5 text-sm border border-blue-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20"
-                                                                    placeholder="Nombre del doc..."
-                                                                />
-                                                                <button onClick={() => handleGuardarNombre(idx, doc.id)} className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"><Save className="w-4 h-4"/></button>
-                                                                <button onClick={() => setEditingDocId(null)} className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"><X className="w-4 h-4"/></button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex justify-between items-start gap-3">
-                                                                <div className="flex-1 min-w-0">
-                                                                    <h4 className="font-bold text-slate-700 text-sm truncate" title={doc.tipoDocumento}>{doc.tipoDocumento}</h4>
-                                                                    <p className="text-xs text-slate-400 font-medium mt-0.5">{(doc.tamano ? (doc.tamano / 1024).toFixed(1) : 0)} KB • PDF</p>
-                                                                </div>
-                                                                <button onClick={() => { setEditingDocId(doc.id); setEditDocValue(doc.tipoDocumento); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Renombrar">
-                                                                    <Edit2 className="w-4 h-4"/>
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                        
-                                                        <button onClick={() => handleEliminarDocumento(idx, doc.id)} className="flex items-center justify-center gap-2 w-full py-2.5 bg-red-50 text-red-600 text-sm font-bold rounded-xl hover:bg-red-500 hover:text-white transition-colors group/btn">
-                                                            <Trash2 className="w-4 h-4 group-hover/btn:animate-bounce" /> Eliminar
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
+                            <div className="space-y-8">
+                                <form onSubmit={handleProcesarIA} className="bg-white p-6 rounded border border-blue-200 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm max-w-4xl mx-auto">
+                                    <div className="flex items-center gap-4 w-full">
+                                        <Bot className="w-10 h-10 text-blue-500 shrink-0" />
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-gray-800 text-sm">Clasificación Automática con IA</h4>
+                                            <p className="text-xs text-gray-500 mb-2">Adjunta tu hdv en pdf. Clinova lo dividirá y acomodará en las carpetas.</p>
+                                            <input required type="file" accept="application/pdf" onChange={(e) => setLoteFile(e.target.files[0])} className="block w-full text-xs text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 outline-none" />
                                         </div>
                                     </div>
-                                )}
+                                    <button disabled={procesandoIA} type="submit" className="whitespace-nowrap px-6 py-2 bg-blue-600 text-white text-sm rounded font-bold hover:bg-blue-700 disabled:opacity-50">
+                                        {procesandoIA ? 'Procesando...' : 'Iniciar IA'}
+                                    </button>
+                                </form>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    {CATEGORIAS_SOPORTES.map((categoria) => {
+                                        const docsCategoria = resultadosIA.filter(d => d.tipoDocumento === categoria || (categoria === "Otros Soportes" && !CATEGORIAS_SOPORTES.includes(d.tipoDocumento)));
+
+                                        return (
+                                            <div key={categoria} className="border border-gray-200 rounded-lg bg-white shadow-sm flex flex-col overflow-hidden">
+                                                <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <Folder className="w-5 h-5 text-yellow-500 fill-yellow-100" />
+                                                        <h3 className="font-bold text-gray-800 text-xs truncate" title={categoria}>{categoria}</h3>
+                                                    </div>
+                                                    <span className="text-xs font-semibold bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                                                        {docsCategoria.length}
+                                                    </span>
+                                                </div>
+
+                                                <div className="p-4 flex-1 flex flex-col gap-3 min-h-[120px] bg-gray-50/30">
+                                                    {docsCategoria.length === 0 ? (
+                                                        <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+                                                            <p className="text-xs mb-3">Carpeta vacía</p>
+                                                            <label className="cursor-pointer flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors">
+                                                                <Upload className="w-3 h-3" /> Subir Manual
+                                                                <input type="file" accept="application/pdf" className="hidden" onChange={(e) => handleManualUpload(e, categoria)} />
+                                                            </label>
+                                                        </div>
+                                                    ) : (
+                                                        docsCategoria.map(doc => (
+                                                            <div key={doc.id} className="bg-white border border-gray-200 p-3 rounded shadow-sm flex flex-col gap-2">
+                                                                {editingDocId === doc.id ? (
+                                                                    <div className="flex gap-1">
+                                                                        <input type="text" autoFocus value={editDocValue} onChange={(e) => setEditDocValue(e.target.value)} className="flex-1 px-2 py-1 text-xs border border-blue-300 rounded outline-none" />
+                                                                        <button onClick={() => handleGuardarNombre(doc.id)} className="p-1 bg-green-100 text-green-700 rounded"><Save className="w-3 h-3"/></button>
+                                                                        <button onClick={() => setEditingDocId(null)} className="p-1 bg-gray-100 text-gray-600 rounded"><X className="w-3 h-3"/></button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex justify-between items-start">
+                                                                        <div className="flex items-center gap-2 overflow-hidden">
+                                                                            <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                                                                            <h4 className="font-semibold text-gray-700 text-xs truncate" title={doc.tipoDocumento}>{doc.tipoDocumento}</h4>
+                                                                        </div>
+                                                                        <button onClick={() => { setEditingDocId(doc.id); setEditDocValue(doc.tipoDocumento); }} className="text-gray-400 hover:text-blue-600 ml-2 shrink-0"><Edit2 className="w-3 h-3"/></button>
+                                                                    </div>
+                                                                )}
+                                                                
+                                                                <div className="flex gap-2 mt-1">
+                                                                    <button onClick={() => verDocumento(doc.rutaArchivo)} className="flex-1 py-1.5 bg-gray-100 text-gray-700 text-xs font-bold rounded hover:bg-gray-200 flex justify-center items-center gap-1">
+                                                                        <Eye className="w-3 h-3" /> Ver
+                                                                    </button>
+                                                                    <button onClick={() => handleEliminarDocumento(doc.id)} className="flex-1 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded hover:bg-red-100 flex justify-center items-center gap-1">
+                                                                        <Trash2 className="w-3 h-3" /> Eliminar
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+
+                                                    {docsCategoria.length > 0 && (
+                                                        <label className="mt-auto cursor-pointer flex items-center justify-center gap-1 text-xs font-bold text-gray-500 bg-white border border-dashed border-gray-300 px-2 py-1.5 rounded hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                                                            <Plus className="w-3 h-3" /> Añadir otro
+                                                            <input type="file" accept="application/pdf" className="hidden" onChange={(e) => handleManualUpload(e, categoria)} />
+                                                        </label>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
                     </div>
