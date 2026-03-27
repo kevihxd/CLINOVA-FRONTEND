@@ -1,18 +1,17 @@
-import { FilePlus, Users, FileSignature } from 'lucide-react';
+import { FilePlus, Users, FileSignature, FileType } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ROUTES } from '../../../router/routes.const';
 import { useAuth } from '../../../providers/AuthProvider';
 
 export const TALENTO_HUMANO_OPTIONS = [
-    { title: 'Perfiles de Cargo', icon: FilePlus, color: 'text-indigo-600', bg: 'bg-indigo-50', page: ROUTES.TALENTO_HUMANO.PERFIL_CARGO.path },
-    { title: 'Hoja de Vida', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', page: ROUTES.TALENTO_HUMANO.HOJA_VIDA.path },
-    { title: 'Organigrama', icon: FileSignature, color: 'text-orange-600', bg: 'bg-orange-50', page: ROUTES.TALENTO_HUMANO.ORGANIGRAMA.path },
+    { title: 'Perfiles de Cargo', icon: FilePlus, color: 'text-indigo-600', bg: 'bg-indigo-50', page: '/talentoHumano/perfiles-cargo' },
+    { title: 'Hoja de Vida', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', page: '/talentoHumano/hoja-de-vida' },
+    { title: 'Organigrama', icon: FileSignature, color: 'text-orange-600', bg: 'bg-orange-50', page: '/talentoHumano/organigrama' },
+    { title: 'Tipo de Documento', icon: FileType, color: 'text-emerald-600', bg: 'bg-emerald-50', page: '/talentoHumano/tipo-documento' }
 ];
 
 export const TalentoHumanoOptions = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    
     const { user } = useAuth();
 
     const userRole = String(user?.rol || user?.role || user?.roles?.[0] || 'USER').toUpperCase(); 

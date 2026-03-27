@@ -1,7 +1,8 @@
 import { TalentoHumanoOptions, TALENTO_HUMANO_OPTIONS } from '../../talentoHumano/components/TalentoHumanoOptions';
 import { CalidadOptions, CALIDAD_OPTIONS } from '../../calidad/components/CalidadOptions';
 import { ConfiguracionOptions, CONFIGURACION_OPTIONS } from '../../configuracion/components/ConfiguracionOptions';
-import { ProcesosOptions, PROCESOS_OPTIONS } from '../../configuracion/components/ProcesosOptions';
+import { ProcesosOptions, PROCESOS_OPTIONS } from '../../procesos/components/ProcesosOptions';
+import { ActasInformesOptions, ACTAS_INFORMES_OPTIONS } from '../../actasInformes/components/ActasInformesOptions';
 
 export const OPTIONS_MAP = {
     '1': TalentoHumanoOptions,
@@ -9,7 +10,8 @@ export const OPTIONS_MAP = {
     '3': ProcesosOptions,
     '4': ProcesosOptions,
     '5': ConfiguracionOptions,
-    '6': ProcesosOptions,
+    '6': ProcesosOptions, 
+    '7': ActasInformesOptions,
 };
 
 export const DATA_MAP = {
@@ -19,4 +21,5 @@ export const DATA_MAP = {
     '4': PROCESOS_OPTIONS,
     '5': CONFIGURACION_OPTIONS,
     '6': PROCESOS_OPTIONS,
+    '7': ACTAS_INFORMES_OPTIONS,
 };

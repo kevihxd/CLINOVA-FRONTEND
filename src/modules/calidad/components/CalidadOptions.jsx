@@ -1,8 +1,8 @@
-import { ClipboardCheck, AlertTriangle, BarChart3, FileText, FilePlus, FileCheck, Trash2, List, Globe, PenTool, BookOpen } from 'lucide-react';
+import { BarChart3, FilePlus, FileCheck, Trash2, List, Globe, PenTool, BookOpen } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../router/routes.const';
+
 export const CALIDAD_OPTIONS = [
-    { title: 'Tipos de Documento', icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50', page: ROUTES.CALIDAD.TIPOS_DOCUMENTO.path },
     { title: 'Solicitar Documento', icon: FilePlus, color: 'text-blue-600', bg: 'bg-blue-50', page: ROUTES.CALIDAD.SOLICITAR_DOCUMENTO.path },
     { title: 'Revisión por documento', icon: FileCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', page: ROUTES.CALIDAD.REVISION_DOCUMENTO.path },
     { title: 'Reportes', icon: BarChart3, color: 'text-violet-600', bg: 'bg-violet-50', page: ROUTES.CALIDAD.REPORTES.path },

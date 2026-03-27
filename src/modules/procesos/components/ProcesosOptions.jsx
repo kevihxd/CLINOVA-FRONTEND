@@ -1,10 +1,10 @@
-import { LayoutTemplate, FileType } from 'lucide-react';
+import { LayoutTemplate, FileType, List } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ROUTES } from '../../../router/routes.const';
 
 export const PROCESOS_OPTIONS = [
-    { title: 'Mapa de Procesos', icon: LayoutTemplate, color: 'text-blue-600', bg: 'bg-blue-50', page: ROUTES.PROCESOS.MAPA_PROCESOS.path },
-    { title: 'Tipos de Documento', icon: FileType, color: 'text-indigo-600', bg: 'bg-indigo-50', page: ROUTES.PROCESOS.TIPOS_DOCUMENTO.path },
+    { title: 'Mapa de Procesos', icon: LayoutTemplate, color: 'text-blue-600', bg: 'bg-blue-50', page: '/procesos/mapa' },
+    { title: 'Tipos de Documento', icon: FileType, color: 'text-indigo-600', bg: 'bg-indigo-50', page: '/procesos/tipos-documentos' },
+    { title: 'Listado Único', icon: List, color: 'text-emerald-600', bg: 'bg-emerald-50', page: '/procesos/listado-unico' },
 ];
 
 export const ProcesosOptions = () => {

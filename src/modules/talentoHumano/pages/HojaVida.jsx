@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, User, Bot, ArrowLeft, FileText, Trash2, Edit2, Save, X, Eye, Upload, Folder, Plus } from 'lucide-react';
+import { Search, User, ArrowLeft, FileText, Trash2, Edit2, Save, X, Eye, Upload, Folder, Plus, Scissors, DownloadCloud } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
@@ -28,7 +28,7 @@ export const HojaVida = () => {
     const [cvNombre, setCvNombre] = useState('');
 
     const [datosCV, setDatosCV] = useState({
-        cedula: '', nombres: '', apellidos: '', direccionResidencia: '',
+        cedula: '', nombres: '', apellidos: '', fechaNacimiento: '', direccionResidencia: '',
         telefono: '', correoElectronico: '', contactoEmergencia: '',
         telefonoContactoEmergencia: '', arl: '', eps: '', afp: '', cajaCompensacion: '',
         fechaIngreso: '', tipoContrato: '', sedeId: '', cargoId: '', salario: '',
@@ -54,10 +54,10 @@ export const HojaVida = () => {
                 setCvNombre(`${hv.nombres} ${hv.apellidos}`);
                 setDatosCV({
                     cedula: hv.cedula || '', nombres: hv.nombres || '', apellidos: hv.apellidos || '', 
-                    direccionResidencia: hv.direccionResidencia || '', telefono: hv.telefono || '', 
-                    correoElectronico: hv.correoElectronico || '', contactoEmergencia: hv.contactoEmergencia || '', 
-                    telefonoContactoEmergencia: hv.telefonoContactoEmergencia || '', arl: hv.arl || '', 
-                    eps: hv.eps || '', afp: hv.afp || '', cajaCompensacion: hv.cajaCompensacion || '',
+                    fechaNacimiento: hv.fechaNacimiento || '', direccionResidencia: hv.direccionResidencia || '', 
+                    telefono: hv.telefono || '', correoElectronico: hv.correoElectronico || '', 
+                    contactoEmergencia: hv.contactoEmergencia || '', telefonoContactoEmergencia: hv.telefonoContactoEmergencia || '', 
+                    arl: hv.arl || '', eps: hv.eps || '', afp: hv.afp || '', cajaCompensacion: hv.cajaCompensacion || '',
                     fechaIngreso: hv.fechaIngreso || '', tipoContrato: hv.tipoContrato || '', 
                     sedeId: hv.sedes && hv.sedes.length > 0 ? hv.sedes[0].id : '', 
                     cargoId: hv.cargos && hv.cargos.length > 0 ? hv.cargos[0].id : '', 
@@ -88,6 +88,9 @@ export const HojaVida = () => {
             let idActual = hojaVidaId;
             const payload = {
                 ...datosCV,
+                fechaNacimiento: datosCV.fechaNacimiento || null,
+                fechaIngreso: datosCV.fechaIngreso || null,
+                fechaRetiro: datosCV.fechaRetiro || null,
                 cargosIds: datosCV.cargoId ? [parseInt(datosCV.cargoId)] : [],
                 sedesIds: datosCV.sedeId ? [parseInt(datosCV.sedeId)] : []
             };
@@ -107,7 +110,7 @@ export const HojaVida = () => {
         }
     };
 
-    const handleProcesarIA = async (e) => {
+    const handleProcesarILovePDF = async (e) => {
         e.preventDefault();
         if (!hojaVidaId || !loteFile) return;
 
@@ -116,15 +119,15 @@ export const HojaVida = () => {
         formData.append('archivoLote', loteFile);
 
         try {
-            const response = await http.post(`/soportes-inteligentes/procesar-lote/${hojaVidaId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            const response = await http.post(`/soportes/herramientas/dividir/${hojaVidaId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
             if (response.data) {
                 const nuevosSoportes = Array.isArray(response.data) ? response.data : (response.data?.data || []);
                 setResultadosIA(prev => [...prev, ...nuevosSoportes]);
-                showAlert({ message: 'Documentos divididos y clasificados', status: 'success' });
+                showAlert({ message: 'Documento dividido exitosamente (Enviados a Otros Soportes)', status: 'success' });
                 setLoteFile(null);
             }
         } catch (error) {
-            showAlert({ message: 'Error al procesar los documentos', status: 'error' });
+            showAlert({ message: 'Error al procesar el documento', status: 'error' });
         } finally {
             setProcesandoIA(false);
         }
@@ -175,6 +178,23 @@ export const HojaVida = () => {
         window.open(`http://localhost:8080/${rutaArchivo}`, '_blank');
     };
 
+    const handleDescargarDocumento = async (rutaArchivo, nombreArchivo) => {
+        try {
+            const response = await fetch(`http://localhost:8080/${rutaArchivo}`);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = nombreArchivo || 'documento.pdf';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            showAlert({ message: 'Error al descargar el documento', status: 'error' });
+        }
+    };
+
     const inputClass = "w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white";
     const labelClass = "text-xs font-semibold text-gray-600 mb-1.5 block";
 
@@ -192,7 +212,7 @@ export const HojaVida = () => {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <form onSubmit={handleSearch} className="relative w-full max-w-xl">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><Search className="h-4 w-4" /></div>
-                        <input type="text" className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 text-sm outline-none" placeholder="Buscar empleado por número de cédula..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <input type="text" className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 text-sm outline-none" placeholder="Buscar empleado por número de cédula o presione Enter vacío para crear..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </form>
                 </div>
 
@@ -202,7 +222,7 @@ export const HojaVida = () => {
                             <User className="w-4 h-4" /> Datos Generales
                         </button>
                         <button disabled={!hojaVidaId} onClick={() => setActiveTab('soportes')} className={`flex items-center gap-2 px-6 py-3 text-sm font-bold transition-colors ${activeTab === 'soportes' ? 'border-b-2 border-blue-600 text-blue-600 bg-white' : 'text-gray-500 hover:text-gray-700'} ${!hojaVidaId ? 'opacity-40 cursor-not-allowed' : ''}`}>
-                            <Bot className="w-4 h-4" /> Soportes
+                            <Folder className="w-4 h-4" /> Soportes Documentales
                         </button>
                     </div>
 
@@ -210,11 +230,11 @@ export const HojaVida = () => {
                         {activeTab === 'datos' && (
                             <form onSubmit={handleCrearCV} className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-                                    
                                     <div className="space-y-4">
-                                        <div><label className={labelClass}>Cédula de ciudadanía</label><input required type="text" className={inputClass} value={datosCV.cedula} onChange={(e) => setDatosCV({...datosCV, cedula: e.target.value})} /></div>
-                                        <div><label className={labelClass}>Nombres</label><input required type="text" className={inputClass} value={datosCV.nombres} onChange={(e) => setDatosCV({...datosCV, nombres: e.target.value})} /></div>
-                                        <div><label className={labelClass}>Apellidos</label><input required type="text" className={inputClass} value={datosCV.apellidos} onChange={(e) => setDatosCV({...datosCV, apellidos: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Cédula de ciudadanía *</label><input required type="text" className={inputClass} value={datosCV.cedula} onChange={(e) => setDatosCV({...datosCV, cedula: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Nombres *</label><input required type="text" className={inputClass} value={datosCV.nombres} onChange={(e) => setDatosCV({...datosCV, nombres: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Apellidos *</label><input required type="text" className={inputClass} value={datosCV.apellidos} onChange={(e) => setDatosCV({...datosCV, apellidos: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Fecha Nacimiento</label><input type="date" className={inputClass} value={datosCV.fechaNacimiento} onChange={(e) => setDatosCV({...datosCV, fechaNacimiento: e.target.value})} /></div>
                                         <div><label className={labelClass}>Dirección</label><input type="text" className={inputClass} value={datosCV.direccionResidencia} onChange={(e) => setDatosCV({...datosCV, direccionResidencia: e.target.value})} /></div>
                                         <div><label className={labelClass}>Teléfono(s)</label><input type="text" className={inputClass} value={datosCV.telefono} onChange={(e) => setDatosCV({...datosCV, telefono: e.target.value})} /></div>
                                         <div><label className={labelClass}>Correo electrónico</label><input type="email" className={inputClass} value={datosCV.correoElectronico} onChange={(e) => setDatosCV({...datosCV, correoElectronico: e.target.value})} /></div>
@@ -222,11 +242,11 @@ export const HojaVida = () => {
                                         <div><label className={labelClass}>Tel. Contacto Emergencia</label><input type="text" className={inputClass} value={datosCV.telefonoContactoEmergencia} onChange={(e) => setDatosCV({...datosCV, telefonoContactoEmergencia: e.target.value})} /></div>
                                         <div><label className={labelClass}>ARL</label><input type="text" className={inputClass} value={datosCV.arl} onChange={(e) => setDatosCV({...datosCV, arl: e.target.value})} /></div>
                                         <div><label className={labelClass}>EPS</label><input type="text" className={inputClass} value={datosCV.eps} onChange={(e) => setDatosCV({...datosCV, eps: e.target.value})} /></div>
-                                        <div><label className={labelClass}>AFP</label><input type="text" className={inputClass} value={datosCV.afp} onChange={(e) => setDatosCV({...datosCV, afp: e.target.value})} /></div>
-                                        <div><label className={labelClass}>Caja de compensación</label><input type="text" className={inputClass} value={datosCV.cajaCompensacion} onChange={(e) => setDatosCV({...datosCV, cajaCompensacion: e.target.value})} /></div>
                                     </div>
 
                                     <div className="space-y-4">
+                                        <div><label className={labelClass}>AFP</label><input type="text" className={inputClass} value={datosCV.afp} onChange={(e) => setDatosCV({...datosCV, afp: e.target.value})} /></div>
+                                        <div><label className={labelClass}>Caja de compensación</label><input type="text" className={inputClass} value={datosCV.cajaCompensacion} onChange={(e) => setDatosCV({...datosCV, cajaCompensacion: e.target.value})} /></div>
                                         <div><label className={labelClass}>Fecha de ingreso</label><input type="date" className={inputClass} value={datosCV.fechaIngreso} onChange={(e) => setDatosCV({...datosCV, fechaIngreso: e.target.value})} /></div>
                                         <div>
                                             <label className={labelClass}>Tipo de contrato</label>
@@ -270,17 +290,19 @@ export const HojaVida = () => {
 
                         {activeTab === 'soportes' && (
                             <div className="space-y-8">
-                                <form onSubmit={handleProcesarIA} className="bg-white p-6 rounded border border-blue-200 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm max-w-4xl mx-auto">
+                                <form onSubmit={handleProcesarILovePDF} className="bg-gradient-to-r from-red-50 to-red-100 p-6 rounded border border-red-200 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm max-w-4xl mx-auto">
                                     <div className="flex items-center gap-4 w-full">
-                                        <Bot className="w-10 h-10 text-blue-500 shrink-0" />
+                                        <div className="bg-red-500 p-3 rounded-lg text-white shrink-0">
+                                            <Scissors className="w-8 h-8" />
+                                        </div>
                                         <div className="flex-1">
-                                            <h4 className="font-bold text-gray-800 text-sm">Clasificación Automática con IA</h4>
-                                            <p className="text-xs text-gray-500 mb-2">Adjunta tu hdv en pdf. Clinova lo dividirá y acomodará en las carpetas.</p>
-                                            <input required type="file" accept="application/pdf" onChange={(e) => setLoteFile(e.target.files[0])} className="block w-full text-xs text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 outline-none" />
+                                            <h4 className="font-bold text-red-900 text-sm">División de PDF (iLovePDF)</h4>
+                                            <p className="text-xs text-red-700 mb-2">Sube un PDF multipágina y se dividirá en documentos individuales listos para previsualizar y renombrar.</p>
+                                            <input required type="file" accept="application/pdf" onChange={(e) => setLoteFile(e.target.files[0])} className="block w-full text-xs text-red-800 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-red-200 file:text-red-900 hover:file:bg-red-300 outline-none" />
                                         </div>
                                     </div>
-                                    <button disabled={procesandoIA} type="submit" className="whitespace-nowrap px-6 py-2 bg-blue-600 text-white text-sm rounded font-bold hover:bg-blue-700 disabled:opacity-50">
-                                        {procesandoIA ? 'Procesando...' : 'Iniciar IA'}
+                                    <button disabled={procesandoIA} type="submit" className="whitespace-nowrap px-6 py-2 bg-red-600 text-white text-sm rounded font-bold hover:bg-red-700 disabled:opacity-50">
+                                        {procesandoIA ? 'Dividiendo...' : 'Dividir PDF'}
                                     </button>
                                 </form>
 
@@ -292,7 +314,7 @@ export const HojaVida = () => {
                                             <div key={categoria} className="border border-gray-200 rounded-lg bg-white shadow-sm flex flex-col overflow-hidden">
                                                 <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <Folder className="w-5 h-5 text-yellow-500 fill-yellow-100" />
+                                                        <Folder className="w-5 h-5 text-blue-500 fill-blue-100" />
                                                         <h3 className="font-bold text-gray-800 text-xs truncate" title={categoria}>{categoria}</h3>
                                                     </div>
                                                     <span className="text-xs font-semibold bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
@@ -328,12 +350,15 @@ export const HojaVida = () => {
                                                                     </div>
                                                                 )}
                                                                 
-                                                                <div className="flex gap-2 mt-1">
-                                                                    <button onClick={() => verDocumento(doc.rutaArchivo)} className="flex-1 py-1.5 bg-gray-100 text-gray-700 text-xs font-bold rounded hover:bg-gray-200 flex justify-center items-center gap-1">
-                                                                        <Eye className="w-3 h-3" /> Ver
+                                                                <div className="grid grid-cols-3 gap-1.5 mt-1">
+                                                                    <button onClick={() => verDocumento(doc.rutaArchivo)} className="py-1.5 bg-gray-100 text-gray-700 text-xs font-bold rounded hover:bg-gray-200 flex justify-center items-center" title="Previsualizar">
+                                                                        <Eye className="w-3.5 h-3.5" />
                                                                     </button>
-                                                                    <button onClick={() => handleEliminarDocumento(doc.id)} className="flex-1 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded hover:bg-red-100 flex justify-center items-center gap-1">
-                                                                        <Trash2 className="w-3 h-3" /> Eliminar
+                                                                    <button onClick={() => handleDescargarDocumento(doc.rutaArchivo, doc.nombreArchivo)} className="py-1.5 bg-blue-50 text-blue-600 text-xs font-bold rounded hover:bg-blue-100 flex justify-center items-center" title="Descargar">
+                                                                        <DownloadCloud className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                    <button onClick={() => handleEliminarDocumento(doc.id)} className="py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded hover:bg-red-100 flex justify-center items-center" title="Eliminar">
+                                                                        <Trash2 className="w-3.5 h-3.5" />
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -352,7 +377,7 @@ export const HojaVida = () => {
                                     })}
                                 </div>
                             </div>
-                        )}
+                        )}n
                     </div>
                 </div>
             </div>

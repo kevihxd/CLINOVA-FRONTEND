@@ -113,7 +113,8 @@ const Dashboard = () => {
                                             <div className="text-4xl">
                                                 {card.title === 'Talento Humano' ? '👥' :
                                                     card.title === 'Calidad' ? '⭐' :
-                                                        card.title === 'Configuración' ? '⚙️' : '📄'}
+                                                        card.title === 'Configuración' ? '⚙️' :
+                                                            card.title === 'Actas e Informes' ? '📝' : '📄'}
                                             </div>
                                         </div>
 

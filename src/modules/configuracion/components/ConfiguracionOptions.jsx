@@ -1,15 +1,14 @@
-import { Users, Workflow, Layers, Share2, Briefcase, IdCard, FileText } from 'lucide-react';
+import { Users, Layers, Share2, Briefcase, FileText } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ROUTES } from '../../../router/routes.const';
+
 export const CONFIGURACION_OPTIONS = [
-    { title: 'Usuarios', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', page: ROUTES.CONFIGURACION.USUARIOS.path },
-    { title: 'Procesos', icon: Workflow, color: 'text-orange-600', bg: 'bg-orange-50', page: ROUTES.CONFIGURACION.PROCESOS.path },
-    { title: 'Macroprocesos', icon: Layers, color: 'text-purple-600', bg: 'bg-purple-50', page: ROUTES.CONFIGURACION.MACROPROCESOS.path },
-    { title: 'Grupos de Distribución', icon: Share2, color: 'text-violet-600', bg: 'bg-violet-50', page: ROUTES.CONFIGURACION.GRUPOS_DISTRIBUCION.path },
-    { title: 'Cargos', icon: Briefcase, color: 'text-rose-600', bg: 'bg-rose-50', page: ROUTES.CONFIGURACION.CARGOS.path },
-    { title: 'Tipo Documento', icon: IdCard, color: 'text-blue-600', bg: 'bg-blue-50', page: ROUTES.CONFIGURACION.TIPO_DOCUMENTO.path },
-    { title: 'Tipo Contrato', icon: FileText, color: 'text-green-600', bg: 'bg-green-50', page: ROUTES.CONFIGURACION.TIPO_CONTRATO.path }
+    { title: 'Usuarios', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', page: '/configuracion/usuarios' },
+    { title: 'Macroprocesos', icon: Layers, color: 'text-purple-600', bg: 'bg-purple-50', page: '/configuracion/macroprocesos' },
+    { title: 'Grupos de Distribución', icon: Share2, color: 'text-violet-600', bg: 'bg-violet-50', page: '/configuracion/grupos-distribucion' },
+    { title: 'Cargos', icon: Briefcase, color: 'text-rose-600', bg: 'bg-rose-50', page: '/configuracion/cargos' },
+    { title: 'Tipo Contrato', icon: FileText, color: 'text-green-600', bg: 'bg-green-50', page: '/configuracion/tipo-contrato' }
 ];
+
 export const ConfiguracionOptions = () => {
     const navigate = useNavigate();
     const location = useLocation();

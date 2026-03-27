@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { User, Lock, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 import { login as loginService } from '../services/auth.service';
 import { useAlert } from '../../../providers/AlertProvider';
 import { useAuth } from '../../../providers/AuthProvider';
@@ -10,8 +9,9 @@ export const LoginForm = ({ onForgotPassword }) => {
     const navigate = useNavigate();
     const { showAlert } = useAlert();
     const { login } = useAuth();
+    
     const [showPassword, setShowPassword] = useState(false);
-
+    const [isLoading, setIsLoading] = useState(false);
     const [credentials, setCredentials] = useState({
         username: '',
         password: ''
@@ -19,134 +19,126 @@ export const LoginForm = ({ onForgotPassword }) => {
 
     const handleChange = (e) => {
         const { id, value } = e.target;
-        setCredentials(prev => ({
-            ...prev,
-            [id]: value
-        }));
+        setCredentials(prev => ({ ...prev, [id]: value }));
     };
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        if (!credentials.username || !credentials.password) return;
+
+        setIsLoading(true);
         try {
             const response = await loginService(credentials);
             const token = response.token;
 
             if (token) {
-                showAlert({ message: "¡Bienvenido a Clinova!", status: "success" });
+                showAlert({ message: "Autenticación exitosa", status: "success" });
                 login(token);
-                
-                setTimeout(() => {
-                    navigate('/dashboard');
-                }, 1500);
+                setTimeout(() => navigate('/dashboard'), 800);
             } else {
-                throw new Error("No se recibió el token de acceso");
+                throw new Error("Token no recibido");
             }
-
         } catch (error) {
-            showAlert({
-                message: "Usuario o contraseña incorrectos. Intente nuevamente.",
-                status: "error"
-            });
+            showAlert({ message: "Credenciales inválidas. Verifique e intente nuevamente.", status: "error" });
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <div className="w-full mx-auto space-y-6 animate-fade-in text-slate-700">
-            <div className="space-y-4 text-center">
-                <div className="inline-flex items-center justify-center p-3 bg-blue-50 rounded-full mb-2">
-                    <User className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-800">Acceso a la Plataforma</h2>
-                    <p className="text-slate-500 text-sm mt-1">
-                        Ingresa tus credenciales para continuar
-                    </p>
-                </div>
+        <div className="w-full flex flex-col h-full justify-center">
+            <div className="mb-8">
+                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Iniciar sesión</h2>
+                <p className="text-slate-500 text-sm mt-1.5 font-medium">Ingrese sus credenciales corporativas</p>
             </div>
 
-            <form className="space-y-5 mt-6" onSubmit={handleLogin}>
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1" htmlFor="username">
+            <form className="space-y-5" onSubmit={handleLogin}>
+                <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1" htmlFor="username">
                         Usuario
                     </label>
                     <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <User className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            <Mail className="h-4.5 w-4.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                         </div>
                         <input
                             id="username"
+                            type="text"
                             value={credentials.username}
                             onChange={handleChange}
-                            className="flex h-12 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 pl-10 text-sm placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all duration-300"
-                            placeholder="Ej. usuario.empresa"
-                            type="text"
+                            disabled={isLoading}
+                            className="block w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all disabled:opacity-60"
+                            placeholder="usuario.empresa"
                             required
                         />
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1" htmlFor="password">
+                <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 ml-1" htmlFor="password">
                         Contraseña
                     </label>
                     <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            <Lock className="h-4.5 w-4.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                         </div>
                         <input
                             id="password"
+                            type={showPassword ? "text" : "password"}
                             value={credentials.password}
                             onChange={handleChange}
-                            className="flex h-12 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 pl-10 pr-10 text-sm placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all duration-300"
-                            type={showPassword ? "text" : "password"}
+                            disabled={isLoading}
+                            className="block w-full h-11 pl-10 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all disabled:opacity-60 font-medium"
                             placeholder="••••••••"
                             required
                         />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-2.5 text-slate-400 hover:text-blue-600 transition-colors bg-transparent rounded-full p-1 hover:bg-blue-50"
+                            disabled={isLoading}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50"
+                            tabIndex="-1"
                         >
-                            {showPassword ? (
-                                <EyeOff className="h-4 w-4" />
-                            ) : (
-                                <Eye className="h-4 w-4" />
-                            )}
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center space-x-2 group cursor-pointer">
+                <div className="flex items-center justify-between pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer group">
                         <input
                             type="checkbox"
-                            id="remember"
-                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            disabled={isLoading}
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 disabled:opacity-60 cursor-pointer"
                         />
-                        <label
-                            htmlFor="remember"
-                            className="text-sm font-medium leading-none text-slate-500 group-hover:text-slate-700 transition-colors cursor-pointer"
-                        >
-                            Recordarme
-                        </label>
-                    </div>
+                        <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">Recordarme</span>
+                    </label>
                     <button
                         type="button"
                         onClick={onForgotPassword}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors hover:underline underline-offset-4"
+                        disabled={isLoading}
+                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-60"
                     >
-                        ¿Olvidaste tu clave?
+                        ¿Olvidó su clave?
                     </button>
                 </div>
 
                 <button
                     type="submit"
-                    className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-0.5"
+                    disabled={isLoading}
+                    className="relative w-full h-11 flex items-center justify-center gap-2 mt-4 bg-slate-900 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed group overflow-hidden"
                 >
-                    <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                        <Lock className="h-5 w-5 text-blue-300 group-hover:text-blue-200" aria-hidden="true" />
-                    </span>
-                    Iniciar Sesión Segura
+                    {isLoading ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Autenticando...</span>
+                        </>
+                    ) : (
+                        <>
+                            <span>Ingresar al sistema</span>
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </>
+                    )}
                 </button>
             </form>
         </div>

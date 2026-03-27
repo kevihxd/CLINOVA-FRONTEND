@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ArrowLeft, Search, Settings, ChevronLeft, ChevronRight, IdCard, Filter, Plus, FileText, Calendar, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { CreateTipoDocumento } from '../components/CreateTipoDocumento';
+import { CreateTipoDocumento } from '../../configuracion/components/CreateTipoDocumento';
 
 // Mock Data basada en la estructura solicitada
 const MOCK_DATA = Array.from({ length: 5 }, (_, i) => ({
