@@ -16,8 +16,28 @@ const Dashboard = () => {
     
     const { user } = useAuth(); 
 
-    const userRole = String(user?.rol || user?.role || user?.roles?.[0] || 'USER').toUpperCase(); 
-    const isAuditor = userRole.includes('ADMIN') || userRole.includes('HR_MANAGER');
+    // LÓGICA CORREGIDA PARA LEER EL NUEVO JWT
+    const checkIsAuditor = () => {
+        if (!user) return false;
+
+        // 1. Extraemos los permisos del nuevo token (Spring Boot los guarda en 'permisos')
+        const permisos = user?.permisos || user?.authorities || [];
+        
+        // 2. Si es un array, verificamos si tiene ROLE_ADMIN o ROLE_HR_MANAGER
+        if (Array.isArray(permisos)) {
+            return permisos.some(p => 
+                p === 'ROLE_ADMIN' || 
+                p === 'ROLE_HR_MANAGER' || 
+                p === 'ADMIN'
+            );
+        }
+
+        // 3. Fallback por si en el caché quedó guardado un token con la estructura vieja
+        const oldRole = String(user?.rol || user?.role || '').toUpperCase();
+        return oldRole.includes('ADMIN') || oldRole.includes('HR_MANAGER');
+    };
+
+    const isAuditor = checkIsAuditor();
 
     const allowedCards = cards.filter(card => {
         if (isAuditor) return true;
@@ -112,7 +132,7 @@ const Dashboard = () => {
                                         <div className={`w-20 h-20 rounded-2xl flex items-center justify-center bg-white shadow-sm group-hover:scale-110 transition-transform duration-500`}>
                                             <div className="text-4xl">
                                                 {card.title === 'Talento Humano' ? '👥' :
-                                                    card.title === 'Calidad' ? '⭐' :
+                                                    card.title === 'Gestión de Calidad' ? '⭐' :
                                                         card.title === 'Configuración' ? '⚙️' :
                                                             card.title === 'Actas e Informes' ? '📝' : '📄'}
                                             </div>

@@ -18,8 +18,7 @@ export const AuthProvider = ({ children }) => {
 
     const decodeToken = (token) => {
         try {
-            const decoded = jwtDecode(token);
-            return decoded;
+            return jwtDecode(token);
         } catch (error) {
             console.error("Error al decodificar token", error);
             return null;
@@ -60,7 +59,16 @@ export const AuthProvider = ({ children }) => {
         localStorage.clear();
         setUser(null);
         setIsAuthenticated(false);
-        // window.location.href = '/login'; 
+    };
+
+    const hasPermission = (requiredPermission) => {
+        if (!user) return false;
+        
+        const userPermissions = user.permisos || user.authorities || [];
+        
+        if (userPermissions.includes('ROLE_ADMIN')) return true;
+
+        return userPermissions.includes(requiredPermission);
     };
 
     const value = {
@@ -68,7 +76,8 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated,
         loading,
         login,
-        logout
+        logout,
+        hasPermission
     };
 
     return (

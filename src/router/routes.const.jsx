@@ -1,5 +1,4 @@
 import ConstructionPage from '../components/ConstructionPage';
-import { PerfilesCargos } from '../modules/talentoHumano/pages/PerfilesCargos';
 import { HojaVida } from '../modules/talentoHumano/pages/HojaVida';
 import { Organigrama } from '../modules/talentoHumano/pages/Organigrama';
 import { VerDetalleCargo } from '../modules/talentoHumano/pages/VerDetalleCargo';
@@ -7,6 +6,8 @@ import { TipoDocumento } from '../modules/talentoHumano/pages/TipoDocumento';
 import { MapaProcesos } from '../modules/procesos/pages/MapaProcesos';
 import { TipoDocumentos } from '../modules/procesos/pages/TipoDocumentos'; 
 import { ListadoUnico } from '../modules/procesos/pages/ListadoUnico'; 
+import { CrearDocumentoForm } from '../modules/procesos/pages/CrearDocumento'; 
+import { PerfilesCargos } from '../modules/procesos/pages/PerfilesCargos';
 import { SolicitarDocumento } from '../modules/calidad/pages/SolicitarDocumento';
 import { RevisionDocumento } from '../modules/calidad/pages/RevisionDocumento';
 import { Reporte } from '../modules/calidad/pages/Reporte';
@@ -18,6 +19,7 @@ import { Definiciones } from '../modules/calidad/pages/Definiciones';
 import { MiPerfil } from '../modules/miCuenta/pages/MiPerfil';
 import { TipoContrato } from '../modules/configuracion/pages/TipoContrato';
 import { Usuarios } from '../modules/configuracion/pages/Usuarios';
+import { GestionCargos } from '../modules/configuracion/pages/GestionCargos';
 import { GestionActas } from '../modules/actasInformes/pages/GestionActas';
 import { CrearPlantilla } from '../modules/actasInformes/pages/CrearPlantilla';
 import { CrearActa } from '../modules/actasInformes/pages/CrearActa';
@@ -27,7 +29,6 @@ export const ROUTES = {
     MI_PERFIL: { path: '/miCuenta/mi-perfil', title: 'Mi Perfil', element: <MiPerfil /> },
   },
   TALENTO_HUMANO: {
-    PERFIL_CARGO: { path: '/talentoHumano/perfiles-cargo', title: 'Perfiles de Cargo', element: <PerfilesCargos /> },
     HOJA_VIDA: { path: '/talentoHumano/hoja-de-vida', title: 'Hoja de Vida', element: <HojaVida /> },
     ORGANIGRAMA: { path: '/talentoHumano/organigrama', title: 'Organigrama', element: <Organigrama /> },
     VER_DETALLE: { path: '/talentoHumano/perfiles-cargo/:id', title: 'Detalle de Cargo', element: <VerDetalleCargo /> },
@@ -36,7 +37,9 @@ export const ROUTES = {
   PROCESOS: {
     MAPA_PROCESOS: { path: '/procesos/mapa', title: 'Mapa de Procesos', element: <MapaProcesos /> },
     TIPOS_DOCUMENTOS: { path: '/procesos/tipos-documentos', title: 'Tipos de Documento', element: <TipoDocumentos /> }, 
-    LISTADO_UNICO: { path: '/procesos/listado-unico', title: 'Listado Único', element: <ListadoUnico /> }, 
+    LISTADO_UNICO: { path: '/procesos/listado-unico', title: 'Listado Único', element: <ListadoUnico /> },
+    CREAR_DOCUMENTO: { path: '/procesos/crear-documento', title: 'Crear Documento', element: <CrearDocumentoForm /> },
+    PERFILES_CARGO: { path: '/procesos/perfiles-cargo', title: 'Perfiles de Cargo', element: <PerfilesCargos /> },
   },
   CALIDAD: {
     SOLICITAR_DOCUMENTO: { path: '/calidad/solicitar-documento', title: 'Solicitar Documento', element: <SolicitarDocumento /> },
@@ -52,7 +55,7 @@ export const ROUTES = {
     USUARIOS: { path: '/configuracion/usuarios', title: 'Gestión de Usuarios', element: <Usuarios /> },
     MACROPROCESOS: { path: '/configuracion/macroprocesos', title: 'Gestión de Macroprocesos', element: <ConstructionPage title="Gestión de Macroprocesos" /> },
     GRUPOS_DISTRIBUCION: { path: '/configuracion/grupos-distribucion', title: 'Grupos de Distribución', element: <ConstructionPage title="Grupos de Distribución" /> },
-    CARGOS: { path: '/configuracion/cargos', title: 'Gestión de Cargos', element: <ConstructionPage title="Gestión de Cargos" /> },
+    CARGOS: { path: '/configuracion/cargos', title: 'Gestión de Cargos', element: <GestionCargos /> },
     TIPO_CONTRATO: { path: '/configuracion/tipo-contrato', title: 'Gestión de Tipo Contrato', element: <TipoContrato title="Gestión de Tipo Contrato" /> },
   },
   ACTAS_INFORMES: {

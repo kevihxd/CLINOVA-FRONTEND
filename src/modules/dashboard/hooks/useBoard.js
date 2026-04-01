@@ -28,14 +28,6 @@ export const useBoard = () => {
             position: { x: 100, y: 350 }
         },
         {
-            id: '4',
-            title: 'Documentación',
-            description: 'Control de versiones y archivos',
-            icon: FileText,
-            color: 'bg-orange-500',
-            position: { x: 450, y: 350 }
-        },
-        {
             id: '5',
             title: 'Configuración',
             description: 'Gestión de configuraciones',
