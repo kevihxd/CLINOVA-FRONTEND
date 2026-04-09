@@ -1,15 +1,43 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Save, X, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link2, Image as ImageIcon, Undo, Redo, FileSignature } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, X, FileSignature } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
+
+const editorModules = {
+    toolbar: [
+        // Fuente, Tamaño y Encabezados
+        [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        // Formato de texto básico
+        ['bold', 'italic', 'underline', 'strike'],
+        // Color de texto y fondo
+        [{ 'color': [] }, { 'background': [] }],
+        // Subíndice / Superíndice
+        [{ 'script': 'sub'}, { 'script': 'super' }],
+        // Alineación
+        [{ 'align': [] }],
+        // Listas y Sangrías
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        // Bloques y multimedia
+        ['blockquote', 'code-block'],
+        ['link', 'image', 'video'],
+        // Limpiar formato
+        ['clean']
+    ],
+    clipboard: {
+        matchVisual: false,
+    }
+};
 
 export const CrearActa = () => {
     const navigate = useNavigate();
     const { showAlert } = useAlert();
     const [searchParams] = useSearchParams();
     const plantillaId = searchParams.get('plantillaId');
-    const textAreaRef = useRef(null);
 
     const [titulo, setTitulo] = useState('');
     const [fecha, setFecha] = useState('');
@@ -23,8 +51,10 @@ export const CrearActa = () => {
             const fetchPlantilla = async () => {
                 try {
                     const res = await http.get(`/plantillas/${plantillaId}`);
-                    setTitulo(`Copia de: ${res.data.titulo}`);
-                    setContenido(res.data.contenidoHtml);
+                    const data = res.data?.data || res.data;
+                    setTitulo(`Acta basada en: ${data.titulo}`);
+                    setContenido(data.contenidoHtml || '');
+                    showAlert({ message: 'Plantilla cargada correctamente. Puede reemplazar las variables.', status: 'info' });
                 } catch (error) {
                     showAlert({ message: 'Error al cargar la plantilla seleccionada', status: 'error' });
                 }
@@ -36,19 +66,12 @@ export const CrearActa = () => {
     const handleGuardar = async (e) => {
         e.preventDefault();
         
-        if (!titulo.trim() || !fecha || !tipo || !responsable || !contenido.trim()) {
-            showAlert({ message: 'Todos los campos son obligatorios', status: 'warning' });
+        if (!titulo.trim() || !fecha || !tipo || !responsable || !contenido.trim() || contenido === '<p><br></p>') {
+            showAlert({ message: 'Todos los campos y el contenido del acta son obligatorios', status: 'warning' });
             return;
         }
 
-        const payload = {
-            titulo,
-            fecha,
-            tipo,
-            estado,
-            responsable,
-            contenidoHtml: contenido
-        };
+        const payload = { titulo, fecha, tipo, estado, responsable, contenidoHtml: contenido };
 
         try {
             await http.post('/actas', payload);
@@ -59,18 +82,12 @@ export const CrearActa = () => {
         }
     };
 
-    const ToolbarButton = ({ icon: Icon, title }) => (
-        <button type="button" title={title} className="p-1.5 text-slate-600 hover:bg-slate-100 rounded transition-colors">
-            <Icon size={18} />
-        </button>
-    );
-
     const inputClass = "w-full px-4 py-2 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all";
     const labelClass = "text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wider";
 
     return (
         <form onSubmit={handleGuardar} className="min-h-screen bg-slate-50 p-6 md:p-8">
-            <div className="max-w-[1600px] mx-auto space-y-6">
+            <div className="max-w-[1400px] mx-auto space-y-6">
                 
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -127,29 +144,14 @@ export const CrearActa = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all flex flex-col h-[600px]">
-                    <div className="bg-slate-50 border-b border-slate-200 p-2 flex flex-wrap gap-1 items-center">
-                        <ToolbarButton icon={Bold} title="Negrita" />
-                        <ToolbarButton icon={Italic} title="Cursiva" />
-                        <ToolbarButton icon={Underline} title="Subrayado" />
-                        <ToolbarButton icon={Strikethrough} title="Tachado" />
-                        <div className="w-px h-6 bg-slate-200 mx-1" />
-                        <ToolbarButton icon={List} title="Lista con viñetas" />
-                        <ToolbarButton icon={ListOrdered} title="Lista numerada" />
-                        <div className="w-px h-6 bg-slate-200 mx-1" />
-                        <ToolbarButton icon={Link2} title="Insertar enlace" />
-                        <ToolbarButton icon={ImageIcon} title="Insertar imagen" />
-                        <div className="w-px h-6 bg-slate-200 mx-1" />
-                        <ToolbarButton icon={Undo} title="Deshacer" />
-                        <ToolbarButton icon={Redo} title="Rehacer" />
-                    </div>
-
-                    <textarea 
-                        ref={textAreaRef}
-                        required
-                        value={contenido}
-                        onChange={(e) => setContenido(e.target.value)}
-                        className="flex-1 w-full p-6 text-sm outline-none resize-none placeholder:text-slate-400"
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all">
+                    <ReactQuill 
+                        theme="snow" 
+                        value={contenido} 
+                        onChange={setContenido} 
+                        modules={editorModules}
+                        className="bg-white"
+                        style={{ height: '700px', paddingBottom: '42px' }}
                         placeholder="Comienza a redactar el contenido del acta aquí..."
                     />
                 </div>

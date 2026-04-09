@@ -8,10 +8,10 @@ export const UsuariosService = {
     getById: (id: number) =>
         http.get<Usuario>(`/usuarios/${id}`),
 
-    create: (data: { username: string; password: string }) =>
-        http.post("/auth/registro", data),
+    create: (data: CreateUsuarioRequest) =>
+        http.post("/usuarios", data), 
 
-    update: (id: number, data: Partial<CreateUsuarioRequest>) =>
+    update: (id: number, data: Partial<Usuario>) =>
         http.put<Usuario>(`/usuarios/${id}`, data),
 
     delete: (id: number) =>

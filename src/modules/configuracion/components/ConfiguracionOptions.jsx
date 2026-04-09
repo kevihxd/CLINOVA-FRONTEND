@@ -1,42 +1,106 @@
-import { Users, Layers, Share2, Briefcase, FileText } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Users, Shield, Map, Briefcase, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export const CONFIGURACION_OPTIONS = [
-    { title: 'Usuarios', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', page: '/configuracion/usuarios' },
-    { title: 'Macroprocesos', icon: Layers, color: 'text-purple-600', bg: 'bg-purple-50', page: '/configuracion/macroprocesos' },
-    { title: 'Grupos de Distribución', icon: Share2, color: 'text-violet-600', bg: 'bg-violet-50', page: '/configuracion/grupos-distribucion' },
-    { title: 'Cargos', icon: Briefcase, color: 'text-rose-600', bg: 'bg-rose-50', page: '/configuracion/cargos' },
-    { title: 'Tipo Contrato', icon: FileText, color: 'text-green-600', bg: 'bg-green-50', page: '/configuracion/tipo-contrato' }
+    { 
+        title: 'Gestión de Usuarios', 
+        path: '/configuracion/usuarios', 
+        icon: Users,
+        color: 'text-indigo-600',
+        description: 'Administración de cuentas y perfiles de acceso'
+    },
+    { 
+        title: 'Gestión de Cargos', 
+        path: '/configuracion/cargos', 
+        icon: Shield,
+        color: 'text-purple-600',
+        description: 'Configuración de jerarquías y permisos'
+    },
+    { 
+        title: 'Macroprocesos', 
+        path: '/configuracion/macroprocesos', 
+        icon: Map,
+        color: 'text-emerald-600',
+        description: 'Estructura organizacional de alto nivel'
+    },
+    { 
+        title: 'Tipos de Contrato', 
+        path: '/configuracion/tipo-contrato', 
+        icon: Briefcase,
+        color: 'text-blue-600',
+        description: 'Modelos de contratación de personal'
+    }
 ];
 
-export const ConfiguracionOptions = () => {
+export const ConfiguracionOptions = ({ onClose }) => {
     const navigate = useNavigate();
-    const location = useLocation();
-    const options = CONFIGURACION_OPTIONS;
+
+    const options = [
+        { 
+            title: 'Gestión de Usuarios', 
+            path: '/configuracion/usuarios', 
+            icon: Users,
+            color: 'text-indigo-600',
+            bgColor: 'bg-indigo-50',
+            description: 'Administración de cuentas y perfiles de acceso'
+        },
+        { 
+            title: 'Gestión de Cargos', 
+            path: '/configuracion/cargos', 
+            icon: Shield,
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-50',
+            description: 'Configuración de jerarquías y permisos'
+        },
+        { 
+            title: 'Macroprocesos', 
+            path: '/configuracion/macroprocesos', 
+            icon: Map,
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
+            description: 'Estructura organizacional de alto nivel'
+        },
+        { 
+            title: 'Tipos de Contrato', 
+            path: '/configuracion/tipo-contrato', 
+            icon: Briefcase,
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50',
+            description: 'Modelos de contratación de personal'
+        }
+    ];
 
     const handleNavigation = (path) => {
-        if (location.pathname !== path) {
-            navigate(path);
-        }
+        navigate(path);
+        if (onClose) onClose();
     };
 
     return (
-        <div className="grid grid-cols-1 gap-4 p-4">
-            {options.map((opt, idx) => (
-                <button
-                    key={idx}
-                    onClick={() => handleNavigation(opt.page)}
-                    className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-100 transition-all group text-left"
-                >
-                    <div className={`p-3 rounded-lg ${opt.bg} ${opt.color} group-hover:scale-110 transition-transform`}>
-                        <opt.icon size={20} />
-                    </div>
-                    <div>
-                        <h4 className="font-semibold text-slate-800">{opt.title}</h4>
-                        <p className="text-xs text-slate-400">Gestionar {opt.title.toLowerCase()}</p>
-                    </div>
-                </button>
-            ))}
+        <div className="flex flex-col gap-3 w-full">
+            {options.map((option, index) => {
+                const Icon = option.icon;
+                return (
+                    <button
+                        key={index}
+                        onClick={() => handleNavigation(option.path)}
+                        className="w-full flex items-center p-4 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all group text-left"
+                    >
+                        <div className={`p-3 rounded-lg ${option.bgColor} ${option.color} mr-4 group-hover:scale-110 transition-transform`}>
+                            <Icon size={24} strokeWidth={2} />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors text-base">
+                                {option.title}
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-1">
+                                {option.description}
+                            </p>
+                        </div>
+                        <ChevronRight size={20} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                    </button>
+                );
+            })}
         </div>
     );
 };

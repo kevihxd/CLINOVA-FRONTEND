@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, CalendarDays, ChevronDown, Plus, Download, Eye, Edit, Trash2, ChevronLeft, ChevronRight, Target, Hourglass, CheckCircle2, X, FilePlus, Copy } from 'lucide-react';
+import { Search, FileText, CalendarDays, ChevronDown, Plus, Download, Eye, Edit, Trash2, Target, Hourglass, CheckCircle2, X, FilePlus, Copy, LayoutTemplate } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
@@ -28,16 +28,6 @@ const getStatusStyles = (estado) => {
     }
 };
 
-const FilterSelect = ({ label, options }) => (
-    <div className="relative">
-        <select className="pl-4 pr-10 py-2.5 border border-gray-300 rounded text-sm appearance-none focus:ring-1 focus:ring-blue-500 outline-none text-gray-700 min-w-[160px]">
-            <option>{label}</option>
-            {options.map(opt => <option key={opt}>{opt}</option>)}
-        </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-    </div>
-);
-
 export const GestionActas = () => {
     const navigate = useNavigate();
     const { showAlert } = useAlert();
@@ -48,6 +38,9 @@ export const GestionActas = () => {
     const [createMode, setCreateMode] = useState('zero');
     const [selectedTemplate, setSelectedTemplate] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // Nuevo estado para controlar qué tabla ver
+    const [activeTab, setActiveTab] = useState('actas');
 
     const fetchData = async () => {
         try {
@@ -55,10 +48,10 @@ export const GestionActas = () => {
                 http.get('/actas'),
                 http.get('/plantillas')
             ]);
-            setActas(resActas.data || []);
-            setPlantillas(resPlantillas.data || []);
+            setActas(resActas.data?.data || resActas.data || []);
+            setPlantillas(resPlantillas.data?.data || resPlantillas.data || []);
         } catch (error) {
-            showAlert({ message: 'Error al cargar los datos', status: 'error' });
+            showAlert({ message: 'Error al cargar los datos. Verifique conexión con el servidor.', status: 'error' });
         }
     };
 
@@ -66,7 +59,7 @@ export const GestionActas = () => {
         fetchData();
     }, []);
 
-    const handleEliminar = async (id) => {
+    const handleEliminarActa = async (id) => {
         if (!window.confirm('¿Seguro que desea eliminar esta acta?')) return;
         try {
             await http.delete(`/actas/${id}`);
@@ -74,6 +67,17 @@ export const GestionActas = () => {
             fetchData();
         } catch (error) {
             showAlert({ message: 'Error al eliminar acta', status: 'error' });
+        }
+    };
+
+    const handleEliminarPlantilla = async (id) => {
+        if (!window.confirm('¿Seguro que desea eliminar esta plantilla de forma permanente?')) return;
+        try {
+            await http.delete(`/plantillas/${id}`);
+            showAlert({ message: 'Plantilla eliminada', status: 'success' });
+            fetchData();
+        } catch (error) {
+            showAlert({ message: 'Error al eliminar la plantilla', status: 'error' });
         }
     };
 
@@ -85,7 +89,8 @@ export const GestionActas = () => {
         }
     };
 
-    const filteredActas = actas.filter(a => a.titulo.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredActas = actas.filter(a => a.titulo?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredPlantillas = plantillas.filter(p => p.titulo?.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <div className="min-h-screen bg-gray-50 p-6 md:p-8">
@@ -94,13 +99,13 @@ export const GestionActas = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
-                            <span>Inicio</span> / <span>Actas y Reportes</span> / <span className="text-gray-500">Gestión de Actas</span>
+                            <span>Inicio</span> / <span>Actas y Reportes</span> / <span className="text-gray-500">Gestión</span>
                         </div>
-                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight mt-1.5 uppercase">Actas de Reunión</h1>
+                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight mt-1.5 uppercase">Gestión Documental</h1>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm">
-                            <Download className="w-4 h-4" /> Exportar Reporte
+                        <button onClick={() => navigate('/actas-informes/crear-plantilla')} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-indigo-300 text-indigo-700 rounded text-sm font-bold hover:bg-indigo-50 transition-colors shadow-sm">
+                            <LayoutTemplate className="w-4 h-4" /> Nueva Plantilla
                         </button>
                         <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm">
                             <Plus className="w-4 h-4" /> Crear Acta
@@ -111,76 +116,107 @@ export const GestionActas = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <StatCard icon={Target} iconColor="text-blue-600" title="TOTAL ACTAS" value={actas.length} subValue={actas.filter(a => a.estado === 'Publicada').length} subLabel="Publicadas" />
                     <StatCard icon={Hourglass} iconColor="text-orange-600" title="ACTAS BORRADOR" value={actas.filter(a => a.estado === 'Borrador').length} subValue="0" subLabel="Pendientes Firma" />
-                    <StatCard icon={CheckCircle2} iconColor="text-green-600" title="PLANTILLAS DISPONIBLES" value={plantillas.length} subValue="" subLabel="Activas en sistema" />
+                    <StatCard icon={CheckCircle2} iconColor="text-indigo-600" title="PLANTILLAS MAESTRAS" value={plantillas.length} subValue="" subLabel="Activas en sistema" />
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-                        <div className="relative flex-1 max-w-lg group">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="flex border-b border-gray-200 bg-gray-50 px-5 pt-3">
+                        <button 
+                            onClick={() => setActiveTab('actas')} 
+                            className={`px-6 py-3 text-sm font-bold transition-colors ${activeTab === 'actas' ? 'border-b-2 border-blue-600 text-blue-600 bg-white rounded-t-lg' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Actas Generadas
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('plantillas')} 
+                            className={`px-6 py-3 text-sm font-bold transition-colors ${activeTab === 'plantillas' ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white rounded-t-lg' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Plantillas Maestras
+                        </button>
+                    </div>
+
+                    <div className="p-5 border-b border-gray-100">
+                        <div className="relative max-w-lg">
                             <Search className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400" />
                             <input 
                                 type="text" 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 text-sm outline-none bg-white placeholder:text-gray-400" 
-                                placeholder="Buscar por título..." 
+                                placeholder={`Buscar en ${activeTab === 'actas' ? 'actas' : 'plantillas'}...`} 
                             />
                         </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="relative">
-                                <input type="text" placeholder="DD/MM/AAAA" className="pl-4 pr-10 py-2.5 border border-gray-300 rounded text-sm outline-none w-40 text-gray-700" />
-                                <CalendarDays className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            </div>
-                            <FilterSelect label="Tipo de Acta" options={['Comité', 'Sincronización', 'Capacitación', 'Revisión', 'Planificación']} />
-                            <FilterSelect label="Estado" options={['Borrador', 'Publicada', 'Archivada']} />
-                        </div>
                     </div>
-                </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
+                        <thead className="text-xs text-gray-500 uppercase tracking-wider bg-gray-50 border-y border-gray-200">
                             <tr>
                                 <th className="px-6 py-4 font-semibold">ID</th>
-                                <th className="px-6 py-4 font-semibold">Título de Acta</th>
-                                <th className="px-6 py-4 font-semibold">Fecha</th>
-                                <th className="px-6 py-4 font-semibold">Tipo</th>
-                                <th className="px-6 py-4 font-semibold">Estado</th>
-                                <th className="px-6 py-4 font-semibold">Responsable</th>
+                                <th className="px-6 py-4 font-semibold">Título</th>
+                                <th className="px-6 py-4 font-semibold">{activeTab === 'actas' ? 'Fecha' : 'Descripción'}</th>
+                                {activeTab === 'actas' && <th className="px-6 py-4 font-semibold">Tipo</th>}
+                                {activeTab === 'actas' && <th className="px-6 py-4 font-semibold">Estado</th>}
                                 <th className="px-6 py-4 font-semibold text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {filteredActas.length === 0 ? (
-                                <tr>
-                                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">No se encontraron actas registradas.</td>
-                                </tr>
-                            ) : filteredActas.map((acta) => (
-                                <tr key={acta.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 font-mono text-xs text-gray-500">ACT-{acta.id}</td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <FileText className="w-4 h-4 text-gray-400 shrink-0" />
-                                            <span className="font-semibold text-gray-800">{acta.titulo}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">{acta.fecha}</td>
-                                    <td className="px-6 py-4 text-gray-600">{acta.tipo}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusStyles(acta.estado)}`}>
-                                            {acta.estado}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">{acta.responsable}</td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="flex items-center justify-center gap-1.5">
-                                            <button className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Ver"><Eye className="w-4.5 h-4.5" /></button>
-                                            <button className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors" title="Editar"><Edit className="w-4.5 h-4.5" /></button>
-                                            <button onClick={() => handleEliminar(acta.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Eliminar"><Trash2 className="w-4.5 h-4.5" /></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            {activeTab === 'actas' ? (
+                                filteredActas.length === 0 ? (
+                                    <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">No se encontraron actas registradas.</td></tr>
+                                ) : filteredActas.map((acta) => (
+                                    <tr key={acta.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 font-mono text-xs text-gray-500">ACT-{acta.id}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+                                                <span className="font-semibold text-gray-800">{acta.titulo}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-600">{acta.fecha}</td>
+                                        <td className="px-6 py-4 text-gray-600">{acta.tipo}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 text-xs font-bold rounded-full ${getStatusStyles(acta.estado)}`}>
+                                                {acta.estado}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <button className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors" title="Editar"><Edit className="w-4.5 h-4.5" /></button>
+                                                <button onClick={() => handleEliminarActa(acta.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Eliminar"><Trash2 className="w-4.5 h-4.5" /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                filteredPlantillas.length === 0 ? (
+                                    <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">No hay plantillas maestras creadas.</td></tr>
+                                ) : filteredPlantillas.map((plantilla) => (
+                                    <tr key={plantilla.id} className="hover:bg-indigo-50/30 transition-colors">
+                                        <td className="px-6 py-4 font-mono text-xs text-gray-500">TPL-{plantilla.id}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <LayoutTemplate className="w-4 h-4 text-indigo-400 shrink-0" />
+                                                <span className="font-semibold text-indigo-900">{plantilla.titulo}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-600 italic">{plantilla.descripcion || 'Sin descripción'}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <button 
+                                                    onClick={() => navigate(`/actas-informes/crear-plantilla?editId=${plantilla.id}`)}
+                                                    className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" 
+                                                    title="Editar Plantilla"
+                                                >
+                                                    <Edit className="w-4.5 h-4.5" />
+                                                </button>
+                                                <button onClick={() => handleEliminarPlantilla(plantilla.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Eliminar Plantilla">
+                                                    <Trash2 className="w-4.5 h-4.5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>

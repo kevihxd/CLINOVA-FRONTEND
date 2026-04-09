@@ -40,9 +40,9 @@ export const OptionSidebar = ({ isOpen, onClose, selectedModule, OptionsComponen
                         </div>
 
                         {/* Content Area */}
-                        <div className="flex-1 overflow-y-auto bg-slate-50/50">
+                        <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
                             {OptionsComponent ? (
-                                <OptionsComponent />
+                                <OptionsComponent onClose={onClose} />
                             ) : (
                                 <div className="p-8 text-center text-slate-400">
                                     <p>No hay opciones configuradas para este módulo aún.</p>

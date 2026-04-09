@@ -1,5 +1,4 @@
 import { X, User, Phone, MapPin, Mail, Calendar, Briefcase, Hash, Info, Fingerprint } from 'lucide-react';
-import { useMemo } from 'react';
 
 const DetailItem = ({ icon: Icon, label, value, className = "" }) => (
     <div className={`flex flex-col gap-1 p-3 rounded-lg bg-slate-50 border border-slate-100 ${className}`}>
@@ -20,7 +19,6 @@ const SectionHeader = ({ icon: Icon, title }) => (
     </h3>
 );
 
-// Helper to map document types used elsewhere
 const TIPO_DOC_MAP = {
     1: 'Cédula de Ciudadanía',
     2: 'Tarjeta de Identidad',
@@ -36,11 +34,10 @@ export const UserDetailModal = ({ isOpen, onClose, user }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-scale-in max-h-[90vh] flex flex-col">
-                {/* Header */}
                 <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
                     <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg border-2 border-white shadow-sm">
-                            {persona.primer_nombre?.[0]}{persona.primer_apellido?.[0]}
+                            {persona.primerNombre?.[0]}{persona.primerApellido?.[0]}
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-slate-800">Detalles del Usuario</h2>
@@ -55,10 +52,7 @@ export const UserDetailModal = ({ isOpen, onClose, user }) => {
                     </button>
                 </div>
 
-                {/* Body - Scrollable */}
                 <div className="p-8 overflow-y-auto custom-scrollbar bg-white">
-
-                    {/* Sección 1: Información Personal */}
                     <div className="mb-8">
                         <SectionHeader icon={User} title="Información Personal" />
 
@@ -66,33 +60,32 @@ export const UserDetailModal = ({ isOpen, onClose, user }) => {
                             <DetailItem
                                 icon={Info}
                                 label="Nombre Completo"
-                                value={`${persona.primer_nombre} ${persona.segundo_nombre || ''} ${persona.primer_apellido} ${persona.segundo_apellido || ''}`}
+                                value={`${persona.primerNombre} ${persona.segundoNombre || ''} ${persona.primerApellido} ${persona.segundoApellido || ''}`}
                                 className="md:col-span-2 lg:col-span-3 bg-blue-50/50 border-blue-100"
                             />
                             <DetailItem
                                 icon={Fingerprint}
                                 label="Tipo Documento"
-                                value={TIPO_DOC_MAP[persona.tipo_documento] || persona.tipo_documento}
+                                value={TIPO_DOC_MAP[persona.tipoDocumento] || persona.tipoDocumento}
                             />
                             <DetailItem
                                 icon={Hash}
                                 label="No. Documento"
-                                value={persona.numero_documento}
+                                value={persona.numeroDocumento}
                             />
                             <DetailItem
                                 icon={Calendar}
                                 label="Fecha Nacimiento"
-                                value={persona.fecha_nacimiento}
+                                value={persona.fechaNacimiento}
                             />
                             <DetailItem
                                 icon={MapPin}
                                 label="Lugar Nacimiento"
-                                value={persona.lugar_nacimiento}
+                                value={persona.lugarNacimiento}
                             />
                         </div>
                     </div>
 
-                    {/* Sección 2: Contacto */}
                     <div className="mb-8">
                         <SectionHeader icon={Phone} title="Datos de Contacto" />
 
@@ -100,23 +93,22 @@ export const UserDetailModal = ({ isOpen, onClose, user }) => {
                             <DetailItem
                                 icon={Mail}
                                 label="Correo Electrónico"
-                                value={persona.correo_electronico}
+                                value={persona.correoElectronico}
                             />
                             <DetailItem
                                 icon={Phone}
                                 label="Número de Teléfono"
-                                value={persona.numero_telefono}
+                                value={persona.numeroTelefono}
                             />
                             <DetailItem
                                 icon={MapPin}
                                 label="Dirección Residencia"
-                                value={persona.direccion_residencia}
+                                value={persona.direccionResidencia}
                                 className="md:col-span-2"
                             />
                         </div>
                     </div>
 
-                    {/* Sección 3: Cuenta de Usuario */}
                     <div>
                         <SectionHeader icon={Briefcase} title="Información de Cuenta" />
 
@@ -124,28 +116,27 @@ export const UserDetailModal = ({ isOpen, onClose, user }) => {
                             <DetailItem
                                 icon={Fingerprint}
                                 label="Usuario / Cédula"
-                                value={user.cedula}
+                                value={user.username}
                             />
                             <DetailItem
                                 icon={Briefcase}
-                                label="Rol Asignado"
-                                value={user.role}
+                                label="Rol / Cargo"
+                                value={user.cargo?.nombre || user.rol}
                                 className={
-                                    user.role === 'Administrador' ? 'text-purple-700 bg-purple-50 border-purple-100' :
-                                        user.role === 'Funcionario' ? 'text-emerald-700 bg-emerald-50 border-emerald-100' :
+                                    user.rol === 'ADMIN' ? 'text-purple-700 bg-purple-50 border-purple-100' :
+                                        user.rol === 'HR_MANAGER' ? 'text-emerald-700 bg-emerald-50 border-emerald-100' :
                                             ''
                                 }
                             />
                             <DetailItem
                                 icon={Calendar}
                                 label="Fecha Creación"
-                                value={user.fecha_creacion?.split('T')[0] || user.persona?.fecha_creacion}
+                                value={user.fecha_creacion?.split('T')[0] || 'No registrada'}
                             />
                         </div>
                     </div>
                 </div>
 
-                {/* Footer */}
                 <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
                     <button
                         onClick={onClose}

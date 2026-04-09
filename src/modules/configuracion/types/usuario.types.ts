@@ -1,48 +1,36 @@
 export interface Persona {
     id: number;
-    tipo_documento: number;
-    numero_documento: number;
-    primer_nombre: string;
-    segundo_nombre: string | null;
-    primer_apellido: string;
-    segundo_apellido: string | null;
-    fecha_nacimiento: string;
-    direccion_residencia: string;
-    numero_telefono: number;
-    lugar_nacimiento: string;
-    correo_electronico: string;
-    fecha_creacion?: string;
-    fecha_modificacion?: string;
-    creado_por?: number;
-    modificado_por?: number;
+    tipoDocumento: string;
+    numeroDocumento: string;
+    primerNombre: string;
+    segundoNombre: string | null;
+    primerApellido: string;
+    segundoApellido: string | null;
+    fechaNacimiento: string;
+    direccionResidencia: string;
+    numeroTelefono: string;
+    lugarNacimiento: string;
+    correoElectronico: string;
 }
 
 export interface Usuario {
     id: number;
-    cedula: string;
+    username: string; 
     password?: string;
-    persona_id: number;
-    fecha_creacion?: string;
-    fecha_modificacion?: string;
-    creado_por?: number;
-    modificado_por?: number;
+    rol?: string; 
+    cargo?: {
+        id: number;
+        nombre: string;
+    };
     persona?: Persona;
-    role?: string; 
 }
 
 export interface CreateUsuarioRequest {
-    tipo_documento: number;
-    numero_documento: number;
-    primer_nombre: string;
-    segundo_nombre?: string;
-    primer_apellido: string;
-    segundo_apellido?: string;
-    fecha_nacimiento: string;
-    direccion_residencia?: string;
-    numero_telefono?: number;
-    lugar_nacimiento?: string;
-    correo_electronico: string;
-    cedula: string;
-    password: string;
-    cargo?: string;
+    username: string;
+    password?: string;
+    rol: string;
+    cargoId?: number;
+    nombres?: string;
+    apellidos?: string;
+    correo?: string;
 }
