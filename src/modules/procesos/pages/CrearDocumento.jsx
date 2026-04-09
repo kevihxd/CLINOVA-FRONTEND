@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Save, ChevronRight, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import http from '../../../services/httpClient';
+import { useAlert } from '../../../providers/AlertProvider';
 
-// Componente Funcional para las Listas Dobles
-const DualListbox = ({ title, options, selectedOptions, onChange, extraRadioSection }) => {
+const DualListbox = ({ title, options = [], selectedOptions = [], onChange, extraRadioSection }) => {
     const [filter, setFilter] = useState('');
     const [highlightedAvailable, setHighlightedAvailable] = useState([]);
     const [highlightedChosen, setHighlightedChosen] = useState([]);
 
-    // Filtra las opciones que aún no han sido seleccionadas
     const availableOptions = options.filter(opt => !selectedOptions.includes(opt));
     const filteredAvailable = availableOptions.filter(opt => opt.toLowerCase().includes(filter.toLowerCase()));
 
@@ -80,55 +80,31 @@ const DualListbox = ({ title, options, selectedOptions, onChange, extraRadioSect
 
 export const CrearDocumentoForm = () => {
     const navigate = useNavigate();
+    const { showAlert } = useAlert();
 
-    // Estado principal del formulario (Incluyendo los arreglos para las listas múltiples)
     const [formData, setFormData] = useState({
-        nombre: '',
-        tipo: '',
-        proceso: '',
-        ubicacion: '',
-        sede: '',
-        mesesRevision: '',
-        alcance: '',
-        confidencialidad: '',
-        otrosProcesos: [],
-        normas: [],
-        elabora: [],
-        revisa: [],
-        aprueba: [],
-        visualizacion: [],
-        impresion: [],
-        descargaOriginal: [],
-        descargaPdf: []
+        nombre: '', tipo: '', proceso: '', ubicacion: '', sede: '', mesesRevision: '',
+        alcance: '', confidencialidad: '', otrosProcesos: [], normas: [],
+        elabora: [], revisa: [], aprueba: [], visualizacion: [], impresion: [],
+        descargaOriginal: [], descargaPdf: []
     });
 
-    const tipos = [
-        'AFICHE', 'ANEXO', 'CARACTERIZACIÓN', 'CARTILLA', 'ESCALA', 'FOLLETO', 
-        'GUÍA', 'INDICADOR', 'INSTRUCTIVO', 'MANUAL', 'PLAN', 'POLITICA', 
-        'PROCEDIMIENTO', 'PROGRAMA', 'PROTOCOLO', 'REGLAMENTO', 'TABLA MEDICA', 'TEST'
-    ];
+    const [tiposDocumento, setTiposDocumento] = useState([]);
+    const [cargos, setCargos] = useState([]);
+    const [sedes, setSedes] = useState([]);
 
     const procesos = [
-        'GESTIÓN ESTRATÉGICA', 'GESTION COMERCIAL Y MERCADEO', 'GESTION DE CALIDAD', 'SIAU', 
-        'PROGRAMA DE HUMANIZACION', 'PROGRAMA PAMEC', 'GESTION DE SALUD PUBLICA', 'Acreditación', 
-        'GESTION DE DOCENCIA E INVESTIGACION', 'MEDICINA INTERNA', 'PEDIATRIA', 
-        'GESTION DE INTERNACION DOMICIALIARIA', 'ORTOPEDIA Y/O TRAUMATOLOGIA', 
-        'MEDICINA FÍSICA Y REHABILITACIÓN', 'MEDICINA DEL TRABAJO Y MEDICINA LABORAL', 
-        'GESTION CONSULTA EXTERNA', '    MEDICINA GENERAL', '    ENFERMERIA', '    ADMISIONES', 
-        '    PSICOLOGIA', '    NUTRICION', '    TRABAJO SOCIAL', '    VACUNACION', 
-        '    MEDICINA ESPECIALIZADA', 'GESTION DE APOYO DIAGNOSTICO Y TERAPEUTICO', 
-        '    TERAPIA OCUPACIONAL', '    FONOAUDIOLOGIA', '    FISIOTERAPIA', 
-        '    SERVICIO FARMACEUTICO', 'ODONTOLOGÍA', 'GESTION FINANCIERA', 'GESTION DE COMPRAS', 
-        'GESTION DE TALENTO HUMANO', 'GESTION DE SEGURIDAD Y SALUD EN EL TRABAJO', 
-        'GESTION DE INFRAESTRUCTURA', 'GESTION DE SEGURIDAD DEL PACIENTE', 'GESTION DE ARCHIVO', 
-        'GESTION DE CUENTAS MEDICAS', 'GESTION DE EDUCACION CONTINUA', 'GESTION DE COMUNICACIONES', 
-        'GESTION TECNOLOGIA Y SISTEMAS DE INFORMACION', 'GESTION DE MEJORA CONTINUA Y ACREDITACION', 
-        'GESTION DE FACTURACION'
+        'GESTIÓN DE HUMANIZACIÓN', 'GESTIÓN COMERCIAL Y MERCADEO', 'GESTIÓN ESTRATÉGICA', 
+        'GESTIÓN DE CALIDAD', 'SIAU', 'GESTIÓN DE SALUD PÚBLICA', 'GESTIÓN DE SEGURIDAD DEL PACIENTE', 
+        'GESTIÓN DE INTERNACIÓN DOMICILIARIO', 'GESTIÓN DE CONSULTA EXTERNA', 
+        'GESTIÓN DE APOYO DIAGNOSTICO Y TERAPEUTICO', 'GESTIÓN DE EDUCACIÓN CONTINUA', 
+        'DOCENCIA E INVESTIGACIÓN', 'GESTIÓN DE CUENTAS MÉDICAS', 'GESTIÓN FINANCIERA', 
+        'GESTIÓN DE TALENTO HUMANO', 'GESTIÓN DE SEGURIDAD Y SALUD EN EL TRABAJO', 
+        'GESTIÓN DE INFRAESTRUCTURA', 'GESTIÓN DE TECNOLOGÍA Y SISTEMAS DE INFORMACIÓN', 
+        'GESTIÓN DE ARCHIVO', 'GESTIÓN DE COMUNICACIONES', 'GESTIÓN DE COMPRAS'
     ];
 
     const normas = ['Acreditacion', 'Habilitación (Resolución 3100 de 2019)', 'ISO 9001:2015'];
-    const sedes = ['1 IPSCH - IPS CLINICAL HOUSE', '2 02 - IPS CLINICAL HOUSE SEDE PAMI', '3 03 - IPS CLINICAL HOUSE SEDE CAOBOS II'];
-    const cargos = ['Aprendiz Sena', 'Auditor Interno', 'Gerente', 'Médico general', 'Enfermera(o)'];
     const grupos = ['Clinical House- Todos', 'FISIOTERAPIA', 'MEDICINA GENERAL'];
 
     const [modoCreacion, setModoCreacion] = useState('Nuevo Documento');
@@ -142,6 +118,28 @@ export const CrearDocumentoForm = () => {
     const [responsableTipo, setResponsableTipo] = useState('usuarios');
     const [visualizacionPermisoTipo, setVisualizacionPermisoTipo] = useState('grupos');
     const [impresionPermisoTipo, setImpresionPermisoTipo] = useState('grupos');
+
+    useEffect(() => {
+        const fetchDatosGlobales = async () => {
+            try {
+                const [resTipos, resCargos, resSedes] = await Promise.all([
+                    http.get('/tipos-documento').catch(() => ({ data: [] })),
+                    http.get('/cargos').catch(() => ({ data: [] })),
+                    http.get('/sedes').catch(() => ({ data: [] }))
+                ]);
+                
+                const tipos = resTipos.data?.data || resTipos.data || [];
+                setTiposDocumento(tipos.map(t => t.nombre));
+                
+                const cargosList = resCargos.data?.data || resCargos.data || [];
+                setCargos(cargosList.map(c => c.nombre));
+
+                const sedesList = resSedes.data?.data || resSedes.data || [];
+                setSedes(sedesList.map(s => s.nombre));
+            } catch (error) {}
+        };
+        fetchDatosGlobales();
+    }, []);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -157,22 +155,23 @@ export const CrearDocumentoForm = () => {
             const dataToSave = {
                 ...formData,
                 metodoCreacion,
-                estado: 'VIGENTE'
+                elabora: formData.elabora.join(', '),
+                revisa: formData.revisa.join(', '),
+                aprueba: formData.aprueba.join(', '),
+                visualizacion: formData.visualizacion.join(', '),
+                impresion: formData.impresion.join(', '),
+                descargaOriginal: formData.descargaOriginal.join(', '),
+                descargaPdf: formData.descargaPdf.join(', '),
+                otrosProcesos: formData.otrosProcesos.join(', '),
+                normas: formData.normas.join(', '),
+                estado: 'EN REVISIÓN'
             };
 
-            const response = await fetch('http://localhost:8080/api/documentos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToSave)
-            });
-
-            if (response.ok) {
-                navigate('/procesos/listado-unico');
-            } else {
-                console.error("Error al guardar documento");
-            }
+            await http.post('/documentos', dataToSave);
+            showAlert({ message: 'Documento creado y enviado a Visto Bueno exitosamente', status: 'success' });
+            navigate('/procesos/listado-unico');
         } catch (error) {
-            console.error("Error de conexión:", error);
+            showAlert({ message: 'Error al guardar el documento', status: 'error' });
         }
     };
 
@@ -287,7 +286,7 @@ export const CrearDocumentoForm = () => {
                                             <label className="text-sm font-bold text-slate-700">Tipo <span className="text-red-500">*</span></label>
                                             <select name="tipo" value={formData.tipo} onChange={handleChange} required className="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white">
                                                 <option value="">Seleccionar</option>
-                                                {tipos.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+                                                {tiposDocumento.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
                                             </select>
                                         </div>
 
@@ -296,7 +295,7 @@ export const CrearDocumentoForm = () => {
                                             <select name="proceso" value={formData.proceso} onChange={handleChange} required className="w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white">
                                                 <option value="">Seleccionar</option>
                                                 {procesos.map((proc, idx) => (
-                                                    <option key={idx} value={proc.trim()} className={proc.startsWith('    ') ? 'pl-4 text-slate-600' : 'font-semibold text-slate-800'}>
+                                                    <option key={idx} value={proc} className="font-semibold text-slate-800">
                                                         {proc}
                                                     </option>
                                                 ))}
@@ -516,7 +515,7 @@ export const CrearDocumentoForm = () => {
 
                                     <div className="pt-6 border-t border-slate-200 flex justify-end gap-3">
                                         <button type="button" onClick={() => navigate('/procesos/listado-unico')} className="px-5 py-2 border border-slate-300 rounded text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
-                                        <button type="submit" className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"><Save size={16} /> Guardar Documento</button>
+                                        <button type="submit" className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"><Save size={16} /> Enviar a Revisión</button>
                                     </div>
                                 </form>
                             </div>

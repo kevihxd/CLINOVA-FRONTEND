@@ -1,20 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit2, Trash2, Eye, X, Save } from 'lucide-react';
+import http from '../../../services/httpClient';
+import { useAlert } from '../../../providers/AlertProvider';
 
 export const TipoDocumentos = () => {
-    const [tipos, setTipos] = useState([
-        { id: 1, nombre: 'FORMATO', prefijo: 'FO', orden: 1, esFormato: 'Sí', marcaAgua: 'CONTROLADO', plantilla: '', esCaracterizacion: '' },
-        { id: 2, nombre: 'REGISTRO', prefijo: 'RE', orden: 2, esFormato: '', marcaAgua: 'CONTROLADO', plantilla: '', esCaracterizacion: '' },
-        { id: 3, nombre: 'AFICHE', prefijo: 'AF', orden: 3, esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: '' },
-        { id: 4, nombre: 'ANEXO', prefijo: 'Anexo', orden: 4, esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: '' },
-        { id: 5, nombre: 'CARACTERIZACIÓN', prefijo: 'CAR', orden: 5, esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: '' },
-        { id: 6, nombre: 'FOLLETO', prefijo: 'FLL', orden: 6, esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: '' },
-        { id: 7, nombre: 'GUÍA', prefijo: 'GU', orden: 7, esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: '' },
-        { id: 8, nombre: 'INDICADOR', prefijo: 'IND', orden: 8, esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: '' },
-        { id: 9, nombre: 'INSTRUCTIVO', prefijo: 'INS', orden: 9, esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: '' },
-        { id: 10, nombre: 'MANUAL', prefijo: 'MA', orden: 10, esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: '' }
-    ]);
-
+    const { showAlert } = useAlert();
+    const [tipos, setTipos] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
     const [showModal, setShowModal] = useState(false);
@@ -25,9 +16,22 @@ export const TipoDocumentos = () => {
         nombre: '', prefijo: '', orden: '', esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: 'No' 
     });
 
+    const cargarTipos = async () => {
+        try {
+            const res = await http.get('/tipos-documento');
+            setTipos(res.data?.data || res.data || []);
+        } catch (error) {
+            showAlert({ message: 'Error al cargar los tipos de documento', status: 'error' });
+        }
+    };
+
+    useEffect(() => {
+        cargarTipos();
+    }, []);
+
     const filteredTipos = tipos.filter(t => 
-        t.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        t.prefijo.toLowerCase().includes(searchTerm.toLowerCase())
+        t.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        t.prefijo?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleOpenModal = (tipo = null, ver = false) => {
@@ -36,7 +40,7 @@ export const TipoDocumentos = () => {
             setFormData({ ...tipo });
             setEditingId(tipo.id);
         } else {
-            setFormData({ nombre: '', prefijo: '', orden: '', esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: 'No' });
+            setFormData({ nombre: '', prefijo: '', orden: tipos.length + 1, esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: 'No' });
             setEditingId(null);
         }
         setShowModal(true);
@@ -44,27 +48,44 @@ export const TipoDocumentos = () => {
 
     const handleCloseModal = () => {
         setShowModal(false);
-        setFormData({ nombre: '', prefijo: '', orden: '', esFormato: 'No', marcaAgua: '', plantilla: '', esCaracterizacion: 'No' });
         setEditingId(null);
         setModoVer(false);
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
         if (modoVer) return;
 
-        if (editingId) {
-            setTipos(tipos.map(t => t.id === editingId ? { ...t, ...formData } : t));
-        } else {
-            const newId = tipos.length > 0 ? Math.max(...tipos.map(t => t.id)) + 1 : 1;
-            setTipos([...tipos, { id: newId, ...formData }]);
+        const payload = {
+            ...formData,
+            orden: formData.orden ? Number(formData.orden) : 0
+        };
+
+        try {
+            if (editingId) {
+                await http.put(`/tipos-documento/${editingId}`, payload);
+                showAlert({ message: 'Tipo de documento actualizado', status: 'success' });
+            } else {
+                await http.post('/tipos-documento', payload);
+                showAlert({ message: 'Tipo de documento creado', status: 'success' });
+            }
+            cargarTipos();
+            handleCloseModal();
+        } catch (error) {
+            const mensajeError = error.response?.data?.message || 'Error al guardar el tipo de documento';
+            showAlert({ message: mensajeError, status: 'error' });
         }
-        handleCloseModal();
     };
 
-    const handleDelete = (id) => {
-        if (window.confirm('¿Está seguro de eliminar este registro?')) {
-            setTipos(tipos.filter(t => t.id !== id));
+    const handleDelete = async (id) => {
+        if (window.confirm('¿Está seguro de eliminar este registro de forma permanente?')) {
+            try {
+                await http.delete(`/tipos-documento/${id}`);
+                showAlert({ message: 'Registro eliminado', status: 'success' });
+                cargarTipos();
+            } catch (error) {
+                showAlert({ message: 'Error al eliminar. Verifique dependencias.', status: 'error' });
+            }
         }
     };
 
@@ -121,25 +142,29 @@ export const TipoDocumentos = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredTipos.slice(0, registrosPorPagina).map((tipo) => (
-                                    <tr key={tipo.id} className="hover:bg-blue-50/50 border-b border-slate-200 text-sm text-slate-700 transition-colors">
-                                        <td className="px-4 py-2 border-r border-slate-200 text-center font-medium">{tipo.id}</td>
-                                        <td className="px-4 py-2 border-r border-slate-200 font-semibold">{tipo.nombre}</td>
-                                        <td className="px-4 py-2 border-r border-slate-200">{tipo.prefijo}</td>
-                                        <td className="px-4 py-2 border-r border-slate-200 text-center">{tipo.orden}</td>
-                                        <td className="px-4 py-2 border-r border-slate-200 text-center">{tipo.esFormato}</td>
-                                        <td className="px-4 py-2 border-r border-slate-200">{tipo.marcaAgua}</td>
-                                        <td className="px-4 py-2 border-r border-slate-200">{tipo.plantilla}</td>
-                                        <td className="px-4 py-2 border-r border-slate-200 text-center">{tipo.esCaracterizacion}</td>
-                                        <td className="px-4 py-2 text-center">
-                                            <div className="flex items-center justify-center gap-1.5">
-                                                <button onClick={() => handleOpenModal(tipo, true)} className="p-1.5 text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-100 rounded transition-colors" title="Ver"><Eye size={16} /></button>
-                                                <button onClick={() => handleOpenModal(tipo)} className="p-1.5 text-slate-500 hover:text-amber-600 bg-slate-100 hover:bg-amber-100 rounded transition-colors" title="Modificar"><Edit2 size={16} /></button>
-                                                <button onClick={() => handleDelete(tipo.id)} className="p-1.5 text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-100 rounded transition-colors" title="Eliminar"><Trash2 size={16} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {filteredTipos.length === 0 ? (
+                                    <tr><td colSpan={9} className="text-center py-6 text-slate-500">No hay registros configurados.</td></tr>
+                                ) : (
+                                    filteredTipos.slice(0, registrosPorPagina).map((tipo) => (
+                                        <tr key={tipo.id} className="hover:bg-blue-50/50 border-b border-slate-200 text-sm text-slate-700 transition-colors">
+                                            <td className="px-4 py-2 border-r border-slate-200 text-center font-medium">{tipo.id}</td>
+                                            <td className="px-4 py-2 border-r border-slate-200 font-semibold">{tipo.nombre}</td>
+                                            <td className="px-4 py-2 border-r border-slate-200">{tipo.prefijo}</td>
+                                            <td className="px-4 py-2 border-r border-slate-200 text-center">{tipo.orden}</td>
+                                            <td className="px-4 py-2 border-r border-slate-200 text-center">{tipo.esFormato}</td>
+                                            <td className="px-4 py-2 border-r border-slate-200">{tipo.marcaAgua}</td>
+                                            <td className="px-4 py-2 border-r border-slate-200">{tipo.plantilla}</td>
+                                            <td className="px-4 py-2 border-r border-slate-200 text-center">{tipo.esCaracterizacion}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <button onClick={() => handleOpenModal(tipo, true)} className="p-1.5 text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-100 rounded transition-colors" title="Ver"><Eye size={16} /></button>
+                                                    <button onClick={() => handleOpenModal(tipo)} className="p-1.5 text-slate-500 hover:text-amber-600 bg-slate-100 hover:bg-amber-100 rounded transition-colors" title="Modificar"><Edit2 size={16} /></button>
+                                                    <button onClick={() => handleDelete(tipo.id)} className="p-1.5 text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-100 rounded transition-colors" title="Eliminar"><Trash2 size={16} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -156,10 +181,10 @@ export const TipoDocumentos = () => {
                         <form onSubmit={handleSave}>
                             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div><label className="block text-sm font-bold text-slate-700 mb-1">Nombre</label><input type="text" required disabled={modoVer} value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none disabled:bg-slate-100 uppercase" /></div>
-                                <div><label className="block text-sm font-bold text-slate-700 mb-1">Prefijo</label><input type="text" required disabled={modoVer} value={formData.prefijo} onChange={(e) => setFormData({...formData, prefijo: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none disabled:bg-slate-100" /></div>
-                                <div><label className="block text-sm font-bold text-slate-700 mb-1">Orden</label><input type="number" required disabled={modoVer} value={formData.orden} onChange={(e) => setFormData({...formData, orden: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none disabled:bg-slate-100" /></div>
+                                <div><label className="block text-sm font-bold text-slate-700 mb-1">Prefijo</label><input type="text" required disabled={modoVer} value={formData.prefijo} onChange={(e) => setFormData({...formData, prefijo: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none disabled:bg-slate-100 uppercase" /></div>
+                                <div><label className="block text-sm font-bold text-slate-700 mb-1">Orden Visualización</label><input type="number" required disabled={modoVer} value={formData.orden} onChange={(e) => setFormData({...formData, orden: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none disabled:bg-slate-100" /></div>
                                 <div><label className="block text-sm font-bold text-slate-700 mb-1">Marca de agua</label><input type="text" disabled={modoVer} value={formData.marcaAgua} onChange={(e) => setFormData({...formData, marcaAgua: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none disabled:bg-slate-100 uppercase" /></div>
-                                <div className="md:col-span-2"><label className="block text-sm font-bold text-slate-700 mb-1">Plantilla</label><input type="text" disabled={modoVer} value={formData.plantilla} onChange={(e) => setFormData({...formData, plantilla: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none disabled:bg-slate-100" /></div>
+                                <div className="md:col-span-2"><label className="block text-sm font-bold text-slate-700 mb-1">Plantilla vinculada (URL/ID)</label><input type="text" disabled={modoVer} value={formData.plantilla} onChange={(e) => setFormData({...formData, plantilla: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none disabled:bg-slate-100" /></div>
                                 <div className="grid grid-cols-2 gap-4 md:col-span-2">
                                     <div><label className="block text-sm font-bold text-slate-700 mb-1">¿Es formato?</label><select disabled={modoVer} value={formData.esFormato} onChange={(e) => setFormData({...formData, esFormato: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none disabled:bg-slate-100"><option value="">Seleccione...</option><option value="Sí">Sí</option><option value="No">No</option></select></div>
                                     <div><label className="block text-sm font-bold text-slate-700 mb-1">¿Es caracterización?</label><select disabled={modoVer} value={formData.esCaracterizacion} onChange={(e) => setFormData({...formData, esCaracterizacion: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm outline-none disabled:bg-slate-100"><option value="">Seleccione...</option><option value="Sí">Sí</option><option value="No">No</option></select></div>

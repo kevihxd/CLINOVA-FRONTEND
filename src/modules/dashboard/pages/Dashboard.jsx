@@ -6,7 +6,6 @@ import { motion } from 'framer-motion';
 import { OPTIONS_MAP } from '../constants/dashboardMaps';
 import { useAuth } from '../../../providers/AuthProvider';
 
-// Función auxiliar para asignar estilos e iconos profesionales según el nombre del módulo
 const getModuleStyle = (title) => {
     const normalize = title?.toLowerCase() || '';
     if (normalize.includes('talento humano')) return { icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'hover:border-blue-300', shadow: 'hover:shadow-blue-100' };
@@ -19,12 +18,20 @@ const getModuleStyle = (title) => {
 };
 
 const Dashboard = () => {
-    // Usamos useBoard solo para la gestión del estado y selección, ignoramos el drag and drop
     const { cards, selectedModule, selectModule, closeSidebar } = useBoard();
     const { user } = useAuth(); 
 
-    // Validación de seguridad para mostrar módulos según el rol
-    const checkIsAuditor = () => {
+    // Lógica para formatear el nombre real del usuario si existe en la entidad Persona
+    const getDisplayName = () => {
+        if (user?.persona?.primerNombre) {
+            const nombre = user.persona.primerNombre;
+            const apellido = user.persona.primerApellido || '';
+            return `${nombre} ${apellido}`.trim();
+        }
+        return user?.username || 'Usuario';
+    };
+
+    const isAuditor = () => {
         if (!user) return false;
         const permisos = user?.permisos || user?.authorities || [];
         if (Array.isArray(permisos)) {
@@ -34,14 +41,13 @@ const Dashboard = () => {
         return oldRole.includes('ADMIN') || oldRole.includes('HR_MANAGER');
     };
 
-    const isAuditor = checkIsAuditor();
+    const auditorFlag = isAuditor();
 
     const allowedCards = cards.filter(card => {
-        if (isAuditor) return true;
+        if (auditorFlag) return true;
         return card.title === 'Talento Humano';
     });
 
-    // Animaciones para la carga de las tarjetas
     const containerVariants = {
         hidden: { opacity: 0 },
         show: {
@@ -58,14 +64,12 @@ const Dashboard = () => {
     return (
         <div className="w-full min-h-[calc(100vh-80px)] bg-slate-50/50 relative overflow-y-auto">
             
-            {/* Fondo con patrón sutil */}
             <div className="absolute inset-0 w-full h-full opacity-[0.3] pointer-events-none"
                 style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '32px 32px' }}
             />
 
             <div className="relative z-10 max-w-7xl mx-auto p-6 md:p-8 lg:p-10">
                 
-                {/* Cabecera del Dashboard */}
                 <div className="flex items-center gap-4 mb-10">
                     <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm text-indigo-600">
                         <LayoutDashboard size={28} strokeWidth={1.5} />
@@ -73,12 +77,11 @@ const Dashboard = () => {
                     <div>
                         <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Panel de Control</h1>
                         <p className="text-slate-500 font-medium mt-1">
-                            ¡Hola, <span className="text-indigo-600 capitalize">{user?.username || 'Usuario'}</span>! Selecciona un módulo para comenzar.
+                            ¡Hola, <span className="text-indigo-600 capitalize">{getDisplayName()}</span>! Selecciona un módulo para comenzar.
                         </p>
                     </div>
                 </div>
 
-                {/* Cuadrícula Estática de Módulos */}
                 <motion.div 
                     variants={containerVariants}
                     initial="hidden"
@@ -118,7 +121,6 @@ const Dashboard = () => {
                 </motion.div>
             </div>
 
-            {/* Menú lateral (Sidebar) intacto */}
             <OptionSidebar
                 isOpen={!!selectedModule}
                 onClose={closeSidebar}

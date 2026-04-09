@@ -21,8 +21,43 @@ export const Navbar = () => {
         }
     };
 
-    const nombreUsuario = user?.sub || 'Usuario';
-    const rolUsuario = user?.roles?.[0] || 'Personal';
+
+    const getDisplayName = () => {
+        if (user?.persona?.primerNombre) {
+            const nombre = user.persona.primerNombre;
+            const apellido = user.persona.primerApellido || '';
+            return `${nombre} ${apellido}`.trim();
+        }
+        return user?.username || user?.sub || 'Usuario';
+    };
+
+
+    const getDisplayRole = () => {
+
+        let roleString = String(user?.rol || user?.role || user?.roles?.[0] || '');
+        
+
+        if (!roleString || roleString === 'undefined') {
+            const permisos = user?.permisos || user?.authorities || [];
+            if (Array.isArray(permisos) && permisos.length > 0) {
+                roleString = permisos.find(p => p.startsWith('ROLE_')) || permisos[0];
+            }
+        }
+
+
+        if (roleString && roleString !== 'undefined') {
+            return roleString
+                .replace('ROLE_', '')
+                .replace(/_/g, ' ')
+                .toLowerCase()
+                .replace(/\b\w/g, l => l.toUpperCase());
+        }
+        
+        return 'Personal';
+    };
+
+    const nombreUsuario = getDisplayName();
+    const rolUsuario = getDisplayRole();
 
     return (
         <nav className="h-20 w-full bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] px-6 md:px-8 flex items-center justify-between z-50 fixed top-0 left-0 transition-all duration-300">
@@ -46,10 +81,9 @@ export const Navbar = () => {
                 <div className="h-8 w-px bg-slate-200 hidden sm:block" />
 
                 <div className="flex items-center gap-4">
-                    {/* datos dinámicos UserProfile */}
                     <UserProfile name={nombreUsuario} role={rolUsuario} onClick={() => handleNavigation(ROUTES.MI_CUENTA.MI_PERFIL.path)} />
 
-                    <button onClick={handleLogout} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-300 group" title="Cerrar Sessión">
+                    <button onClick={handleLogout} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-300 group" title="Cerrar Sesión">
                         <LogOut className="w-5 h-5 transition-transform duration-300 group-hover:-translate-x-0.5" />
                     </button>
                 </div>

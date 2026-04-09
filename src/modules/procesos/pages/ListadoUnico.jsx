@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, FileSpreadsheet, Eye, Edit2, Trash2, Download, FilePlus, X, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import http from '../../../services/httpClient';
 
 export const ListadoUnico = () => {
     const navigate = useNavigate();
@@ -17,26 +18,28 @@ export const ListadoUnico = () => {
     const [showCrearModal, setShowCrearModal] = useState(false);
 
     useEffect(() => {
-        cargarDocumentos();
+        cargarDatos();
     }, []);
 
-    const cargarDocumentos = async () => {
+    const cargarDatos = async () => {
         try {
-            const response = await fetch('http://localhost:8080/api/documentos');
-            if (response.ok) {
-                const data = await response.json();
-                setDocumentos(data);
-            }
+            const [resDocs, resTipos] = await Promise.all([
+                http.get('/documentos'),
+                http.get('/tipos-documento')
+            ]);
+            
+            setDocumentos(resDocs.data?.data || resDocs.data || []);
+            setTiposDocumento(resTipos.data?.data || resTipos.data || []);
         } catch (error) {
-            console.error("Error al cargar documentos:", error);
+            console.error("Error al cargar datos:", error);
         }
     };
 
     const eliminarDocumento = async (id) => {
         if (!window.confirm('¿Está seguro de eliminar este documento?')) return;
         try {
-            await fetch(`http://localhost:8080/api/documentos/${id}`, { method: 'DELETE' });
-            cargarDocumentos();
+            await http.delete(`/documentos/${id}`);
+            cargarDatos();
         } catch (error) {
             console.error("Error al eliminar documento:", error);
         }
@@ -44,7 +47,9 @@ export const ListadoUnico = () => {
 
     const sedesUnicas = [...new Set(documentos.map(doc => doc.sede).filter(Boolean))];
     const procesosUnicos = [...new Set(documentos.map(doc => doc.proceso).filter(Boolean))];
-    const tiposUnicos = tiposDocumento.length > 0 ? tiposDocumento : [...new Set(documentos.map(doc => doc.tipo).filter(Boolean))];
+    const tiposUnicos = tiposDocumento.length > 0 
+        ? tiposDocumento.map(t => t.nombre) 
+        : [...new Set(documentos.map(doc => doc.tipo).filter(Boolean))];
 
     const filtrados = documentos.filter(doc => {
         const matchSearch = doc.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || doc.codigo?.toLowerCase().includes(searchTerm.toLowerCase());
