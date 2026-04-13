@@ -48,8 +48,8 @@ export const LoginForm = ({ onForgotPassword }) => {
     return (
         <div className="w-full flex flex-col h-full justify-center">
             <div className="mb-8">
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Iniciar sesión</h2>
-                <p className="text-slate-500 text-sm mt-1.5 font-medium">Ingrese sus credenciales corporativas</p>
+                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Iniciar sesión</h2>
+                <p className="text-slate-500 text-sm mt-1.5 font-medium">Ingrese sus credenciales</p>
             </div>
 
             <form className="space-y-5" onSubmit={handleLogin}>
@@ -59,7 +59,7 @@ export const LoginForm = ({ onForgotPassword }) => {
                     </label>
                     <div className="relative group">
                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                            <Mail className="h-4.5 w-4.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                            <Mail className="h-4.5 w-4.5 text-slate-400 group-focus-within:text-[#1a559e] transition-colors" />
                         </div>
                         <input
                             id="username"
@@ -67,7 +67,7 @@ export const LoginForm = ({ onForgotPassword }) => {
                             value={credentials.username}
                             onChange={handleChange}
                             disabled={isLoading}
-                            className="block w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all disabled:opacity-60"
+                            className="block w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#1a559e] focus:ring-4 focus:ring-[#1a559e]/10 outline-none transition-all disabled:opacity-60"
                             placeholder="usuario.empresa"
                             required
                         />
@@ -80,7 +80,7 @@ export const LoginForm = ({ onForgotPassword }) => {
                     </label>
                     <div className="relative group">
                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                            <Lock className="h-4.5 w-4.5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                            <Lock className="h-4.5 w-4.5 text-slate-400 group-focus-within:text-[#1a559e] transition-colors" />
                         </div>
                         <input
                             id="password"
@@ -88,7 +88,7 @@ export const LoginForm = ({ onForgotPassword }) => {
                             value={credentials.password}
                             onChange={handleChange}
                             disabled={isLoading}
-                            className="block w-full h-11 pl-10 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all disabled:opacity-60 font-medium"
+                            className="block w-full h-11 pl-10 pr-10 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#1a559e] focus:ring-4 focus:ring-[#1a559e]/10 outline-none transition-all disabled:opacity-60 font-medium"
                             placeholder="••••••••"
                             required
                         />
@@ -96,7 +96,7 @@ export const LoginForm = ({ onForgotPassword }) => {
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             disabled={isLoading}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#1a559e] p-1.5 rounded-lg hover:bg-[#1a559e]/5 transition-colors disabled:opacity-50"
                             tabIndex="-1"
                         >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -109,7 +109,7 @@ export const LoginForm = ({ onForgotPassword }) => {
                         <input
                             type="checkbox"
                             disabled={isLoading}
-                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 disabled:opacity-60 cursor-pointer"
+                            className="w-4 h-4 rounded border-slate-300 text-[#1a559e] focus:ring-[#1a559e]/20 disabled:opacity-60 cursor-pointer"
                         />
                         <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">Recordarme</span>
                     </label>
@@ -117,7 +117,7 @@ export const LoginForm = ({ onForgotPassword }) => {
                         type="button"
                         onClick={onForgotPassword}
                         disabled={isLoading}
-                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-60"
+                        className="text-sm font-semibold text-[#1a559e] hover:text-[#123e75] transition-colors disabled:opacity-60"
                     >
                         ¿Olvidó su clave?
                     </button>
@@ -126,7 +126,7 @@ export const LoginForm = ({ onForgotPassword }) => {
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="relative w-full h-11 flex items-center justify-center gap-2 mt-4 bg-slate-900 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed group overflow-hidden"
+                    className="relative w-full h-11 flex items-center justify-center gap-2 mt-4 bg-gradient-to-r from-[#1a559e] to-[#123e75] hover:from-[#123e75] hover:to-[#0c2b54] text-white rounded-xl text-sm font-semibold transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed group overflow-hidden shadow-lg shadow-blue-900/20"
                 >
                     {isLoading ? (
                         <>
