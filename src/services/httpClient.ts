@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const http = axios.create({ 
-    baseURL: "https://portfolio-kelkoo-mae-presented.trycloudflare.com",
+    baseURL: "https://portfolio-kelkoo-mae-presented.trycloudflare.com/api/v1",
     timeout: 10000,
     headers: {
         "Content-Type": "application/json",
