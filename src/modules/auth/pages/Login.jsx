@@ -117,11 +117,10 @@ const Login = () => {
                                     <span className="text-xs font-semibold tracking-wider text-blue-50">CLINOVA</span>
                                 </motion.div>
                                 <h1 className="text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight leading-[1.15]">
-                                    <span className="text-white">SISTEMA DE GESTIÓN DOCUMENTAL</span>
+                                    <span className="text-white">SISTEMA GESTIÓN</span>
                                     <br />
-                                    
                                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-white to-blue-200">
-                                        IPS CLINICAL HOUSE
+                                        CLINICAL HOUSE
                                     </span>
                                 </h1>
                                 <p className="text-lg text-blue-50/80 leading-relaxed font-light max-w-md">

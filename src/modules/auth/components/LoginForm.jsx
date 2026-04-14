@@ -49,7 +49,7 @@ export const LoginForm = ({ onForgotPassword }) => {
         <div className="w-full flex flex-col h-full justify-center">
             <div className="mb-8">
                 <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Iniciar sesión</h2>
-                <p className="text-slate-500 text-sm mt-1.5 font-medium">Ingrese sus credenciales</p>
+                <p className="text-slate-500 text-sm mt-1.5 font-medium">Ingrese sus credenciales corporativas</p>
             </div>
 
             <form className="space-y-5" onSubmit={handleLogin}>
