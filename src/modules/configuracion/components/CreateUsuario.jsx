@@ -23,7 +23,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
     const [formData, setFormData] = useState({
         tipoDocumento: '', numeroDocumento: '', primerNombre: '', segundoNombre: '',
         primerApellido: '', segundoApellido: '', fechaNacimiento: '', direccionResidencia: '',
-        numeroTelefono: '', lugarNacimiento: '', correoElectronico: '', username: '', password: '', rol: '', cargoId: ''
+        numeroTelefono: '', lugarNacimiento: '', correoElectronico: '', username: '', password: '', rol: '', cargoId: '', perfilVacunacion: ''
     });
 
     useEffect(() => {
@@ -58,13 +58,14 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                 username: editData.username || '',
                 password: '',
                 rol: editData.rol || '',
-                cargoId: editData.cargo?.id || ''
+                cargoId: editData.cargo?.id || '',
+                perfilVacunacion: editData.persona?.perfilVacunacion || editData.persona?.perfil_vacunacion || editData.perfilVacunacion || ''
             });
         } else {
             setFormData({
                 tipoDocumento: '', numeroDocumento: '', primerNombre: '', segundoNombre: '',
                 primerApellido: '', segundoApellido: '', fechaNacimiento: '', direccionResidencia: '',
-                numeroTelefono: '', lugarNacimiento: '', correoElectronico: '', username: '', password: '', rol: 'USER', cargoId: ''
+                numeroTelefono: '', lugarNacimiento: '', correoElectronico: '', username: '', password: '', rol: 'USER', cargoId: '', perfilVacunacion: ''
             });
         }
     }, [editData, isOpen]);
@@ -93,7 +94,8 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                         direccionResidencia: formData.direccionResidencia,
                         numeroTelefono: formData.numeroTelefono,
                         lugarNacimiento: formData.lugarNacimiento,
-                        correoElectronico: formData.correoElectronico
+                        correoElectronico: formData.correoElectronico,
+                        perfilVacunacion: formData.perfilVacunacion
                     }
                 };
                 await UsuariosService.update(editData.id, updatePayload);
@@ -107,7 +109,11 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                     cargoId: formData.cargoId,
                     nombres: formData.primerNombre,
                     apellidos: formData.primerApellido,
-                    correo: formData.correoElectronico
+                    correo: formData.correoElectronico,
+                    perfilVacunacion: formData.perfilVacunacion,
+                    persona: {
+                        perfilVacunacion: formData.perfilVacunacion
+                    }
                 };
                 await UsuariosService.create(createPayload);
                 showAlert({ message: 'Usuario creado correctamente. Para más detalles, edite el usuario.', status: 'success' });
@@ -179,6 +185,14 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700">Teléfono</label>
                                 <input type="text" name="numeroTelefono" value={formData.numeroTelefono} onChange={handleChange} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700">Perfil Vacunación</label>
+                                <select name="perfilVacunacion" value={formData.perfilVacunacion} onChange={handleChange} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white">
+                                    <option value="">Seleccionar...</option>
+                                    <option value="Administrativo">Administrativo</option>
+                                    <option value="Asistencial">Asistencial</option>
+                                </select>
                             </div>
                         </div>
                     </div>

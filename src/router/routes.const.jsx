@@ -3,7 +3,6 @@ import { HojaVida } from '../modules/talentoHumano/pages/HojaVida';
 import { Organigrama } from '../modules/talentoHumano/pages/Organigrama';
 import { VerDetalleCargo } from '../modules/talentoHumano/pages/VerDetalleCargo';
 import { TipoDocumento } from '../modules/talentoHumano/pages/TipoDocumento'; 
-import ImportarVacunas from '../modules/talentoHumano/pages/ImportarVacunas';
 import { MapaProcesos } from '../modules/procesos/pages/MapaProcesos';
 import { TipoDocumentos } from '../modules/procesos/pages/TipoDocumentos'; 
 import { ListadoUnico } from '../modules/procesos/pages/ListadoUnico'; 
@@ -34,7 +33,6 @@ export const ROUTES = {
     ORGANIGRAMA: { path: '/talentoHumano/organigrama', title: 'Organigrama', element: <Organigrama /> },
     VER_DETALLE: { path: '/talentoHumano/perfiles-cargo/:id', title: 'Detalle de Cargo', element: <VerDetalleCargo /> },
     TIPO_DOCUMENTO: { path: '/talentoHumano/tipo-documento', title: 'Tipo de Documento', element: <TipoDocumento /> },
-    IMPORTAR_VACUNAS: { path: '/talentoHumano/importar-vacunas', title: 'Importar Vacunas', element: <ImportarVacunas /> },
   },
   PROCESOS: {
     MAPA_PROCESOS: { path: '/procesos/mapa', title: 'Mapa de Procesos', element: <MapaProcesos /> },
