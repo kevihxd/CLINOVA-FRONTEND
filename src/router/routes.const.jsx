@@ -23,6 +23,7 @@ import { GestionCargos } from '../modules/configuracion/pages/GestionCargos';
 import { GestionActas } from '../modules/actasInformes/pages/GestionActas';
 import { CrearPlantilla } from '../modules/actasInformes/pages/CrearPlantilla';
 import { CrearActa } from '../modules/actasInformes/pages/CrearActa';
+import { AdministracionVacunas } from '../modules/configuracion/pages/AdministracionVacunas';
 
 export const ROUTES = {
   MI_CUENTA: {
@@ -57,6 +58,7 @@ export const ROUTES = {
     GRUPOS_DISTRIBUCION: { path: '/configuracion/grupos-distribucion', title: 'Grupos de Distribución', element: <ConstructionPage title="Grupos de Distribución" /> },
     CARGOS: { path: '/configuracion/cargos', title: 'Gestión de Cargos', element: <GestionCargos /> },
     TIPO_CONTRATO: { path: '/configuracion/tipo-contrato', title: 'Gestión de Tipo Contrato', element: <TipoContrato title="Gestión de Tipo Contrato" /> },
+    VACUNAS: { path: '/configuracion/vacunas', title: 'Administración de Vacunas', element: <AdministracionVacunas /> }
   },
   ACTAS_INFORMES: {
     GESTION_ACTAS: { path: '/actas-informes/gestion-actas', title: 'Gestión de Actas', element: <GestionActas /> },

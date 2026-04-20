@@ -1,7 +1,8 @@
-import { X, Save, User, FileText, Calendar, Mail, Phone, MapPin, Lock, Briefcase } from 'lucide-react';
+import { X, Save, User, Briefcase, Syringe } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAlert } from '../../../providers/AlertProvider';
 import { UsuariosService } from '../services/usuarios.service';
+import http from '../../../services/httpClient';
 
 const TIPOS_DOCUMENTO = [
     { id: 1, nombre: 'Cédula de Ciudadanía', sigla: 'CC' },
@@ -23,19 +24,17 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
     const [formData, setFormData] = useState({
         tipoDocumento: '', numeroDocumento: '', primerNombre: '', segundoNombre: '',
         primerApellido: '', segundoApellido: '', fechaNacimiento: '', direccionResidencia: '',
-        numeroTelefono: '', lugarNacimiento: '', correoElectronico: '', username: '', password: '', rol: '', cargoId: '', perfilVacunacion: ''
+        numeroTelefono: '', lugarNacimiento: '', correoElectronico: '', perfilVacunacion: '',
+        username: '', password: '', rol: '', cargoId: ''
     });
 
     useEffect(() => {
-        // Cargar cargos para el select
         const fetchCargos = async () => {
             try {
-                const res = await fetch('http://localhost:8080/api/cargos', {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                });
-                if (res.ok) setCargos(await res.json());
+                const res = await http.get('/cargos'); 
+                setCargos(Array.isArray(res) ? res : (res.data || []));
             } catch (error) {
-                console.error(error);
+                console.error("Error al cargar los cargos", error);
             }
         };
         if (isOpen) fetchCargos();
@@ -55,17 +54,18 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                 numeroTelefono: editData.persona?.numeroTelefono || '',
                 lugarNacimiento: editData.persona?.lugarNacimiento || '',
                 correoElectronico: editData.persona?.correoElectronico || '',
+                perfilVacunacion: editData.persona?.perfilVacunacion || '',
                 username: editData.username || '',
                 password: '',
                 rol: editData.rol || '',
-                cargoId: editData.cargo?.id || '',
-                perfilVacunacion: editData.persona?.perfilVacunacion || editData.persona?.perfil_vacunacion || editData.perfilVacunacion || ''
+                cargoId: editData.cargo?.id || ''
             });
         } else {
             setFormData({
                 tipoDocumento: '', numeroDocumento: '', primerNombre: '', segundoNombre: '',
                 primerApellido: '', segundoApellido: '', fechaNacimiento: '', direccionResidencia: '',
-                numeroTelefono: '', lugarNacimiento: '', correoElectronico: '', username: '', password: '', rol: 'USER', cargoId: '', perfilVacunacion: ''
+                numeroTelefono: '', lugarNacimiento: '', correoElectronico: '', perfilVacunacion: '',
+                username: '', password: '', rol: '', cargoId: ''
             });
         }
     }, [editData, isOpen]);
@@ -77,46 +77,31 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
         setLoading(true);
 
         try {
+            const payload = {
+                username: formData.username,
+                password: formData.password,
+                rol: formData.rol,
+                cargoId: formData.cargoId ? Number(formData.cargoId) : null,
+                tipoDocumento: formData.tipoDocumento || null,
+                numeroDocumento: formData.numeroDocumento,
+                primerNombre: formData.primerNombre,
+                segundoNombre: formData.segundoNombre,
+                primerApellido: formData.primerApellido,
+                segundoApellido: formData.segundoApellido,
+                fechaNacimiento: formData.fechaNacimiento || null,
+                direccionResidencia: formData.direccionResidencia,
+                numeroTelefono: formData.numeroTelefono,
+                lugarNacimiento: formData.lugarNacimiento,
+                correoElectronico: formData.correoElectronico,
+                perfilVacunacion: formData.perfilVacunacion
+            };
+
             if (editData && editData.id) {
-                // Para el PUT enviamos el objeto Usuario completo mapeado
-                const updatePayload = {
-                    username: formData.username,
-                    password: formData.password,
-                    rol: formData.rol,
-                    persona: {
-                        tipoDocumento: formData.tipoDocumento,
-                        numeroDocumento: formData.numeroDocumento,
-                        primerNombre: formData.primerNombre,
-                        segundoNombre: formData.segundoNombre,
-                        primerApellido: formData.primerApellido,
-                        segundoApellido: formData.segundoApellido,
-                        fechaNacimiento: formData.fechaNacimiento,
-                        direccionResidencia: formData.direccionResidencia,
-                        numeroTelefono: formData.numeroTelefono,
-                        lugarNacimiento: formData.lugarNacimiento,
-                        correoElectronico: formData.correoElectronico,
-                        perfilVacunacion: formData.perfilVacunacion
-                    }
-                };
-                await UsuariosService.update(editData.id, updatePayload);
+                await UsuariosService.update(editData.id, payload);
                 showAlert({ message: 'Usuario actualizado correctamente', status: 'success' });
             } else {
-                // Para el POST usamos el UsuarioRequestDTO
-                const createPayload = {
-                    username: formData.username,
-                    password: formData.password,
-                    rol: formData.rol,
-                    cargoId: formData.cargoId,
-                    nombres: formData.primerNombre,
-                    apellidos: formData.primerApellido,
-                    correo: formData.correoElectronico,
-                    perfilVacunacion: formData.perfilVacunacion,
-                    persona: {
-                        perfilVacunacion: formData.perfilVacunacion
-                    }
-                };
-                await UsuariosService.create(createPayload);
-                showAlert({ message: 'Usuario creado correctamente. Para más detalles, edite el usuario.', status: 'success' });
+                await UsuariosService.create(payload);
+                showAlert({ message: 'Usuario creado correctamente.', status: 'success' });
             }
 
             if (onSaved) onSaved();
@@ -140,7 +125,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                     <div>
                         <h2 className="text-lg font-semibold text-slate-900">{editData ? 'Editar Usuario' : 'Crear Nuevo Usuario'}</h2>
                     </div>
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all">
+                    <button type="button" onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -155,7 +140,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                                 <label className="text-sm font-medium text-slate-700">Tipo Documento</label>
                                 <select name="tipoDocumento" value={formData.tipoDocumento} onChange={handleChange} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white">
                                     <option value="">Seleccionar...</option>
-                                    {TIPOS_DOCUMENTO.map(tipo => <option key={tipo.id} value={tipo.id}>{tipo.sigla} - {tipo.nombre}</option>)}
+                                    {TIPOS_DOCUMENTO.map(tipo => <option key={tipo.id} value={tipo.sigla}>{tipo.sigla} - {tipo.nombre}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-2">
@@ -187,7 +172,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                                 <input type="text" name="numeroTelefono" value={formData.numeroTelefono} onChange={handleChange} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Perfil Vacunación</label>
+                                <label className="text-sm font-medium text-slate-700 flex items-center gap-1"><Syringe className="w-3.5 h-3.5" /> Perfil Vacunación</label>
                                 <select name="perfilVacunacion" value={formData.perfilVacunacion} onChange={handleChange} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white">
                                     <option value="">Seleccionar...</option>
                                     <option value="Administrativo">Administrativo</option>
