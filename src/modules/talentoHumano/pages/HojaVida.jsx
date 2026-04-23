@@ -73,7 +73,10 @@ export const HojaVida = () => {
         const loadVacunas = async () => {
             try {
                 const res = await http.get('/vacunacion/catalogo');
-                setCatalogoVacunasGlobal(res.data || res || []);
+                let data = res.data || res;
+                if (!Array.isArray(data)) data = data?.content || [];
+                if (!Array.isArray(data)) data = [];
+                setCatalogoVacunasGlobal(data);
             } catch (e) {}
         };
         loadVacunas();
@@ -115,7 +118,6 @@ export const HojaVida = () => {
             if (data) {
                 const hv = data.data || data; 
                 setHojaVidaId(hv.id);
-                setCvNombre(`${hv.nombres} ${hv.apellidos}`);
                 setUsuarioHabilitado(true);
                 
                 let parsedVacunas = [];
@@ -134,15 +136,65 @@ export const HojaVida = () => {
                     } catch(e) {}
                 }
 
+                let freshPerfil = hv.perfilVacunacion || '';
+                let freshNombres = hv.nombres || '';
+                let freshApellidos = hv.apellidos || '';
+                let freshCorreo = hv.correoElectronico || '';
+
+                if (isStandardUser) {
+                    const p = user?.persona || {};
+                    freshPerfil = p.perfilVacunacion || freshPerfil;
+                    const nombre1 = p.primerNombre || '';
+                    const nombre2 = p.segundoNombre ? ` ${p.segundoNombre}` : '';
+                    const apellido1 = p.primerApellido || '';
+                    const apellido2 = p.segundoApellido ? ` ${p.segundoApellido}` : '';
+                    const n = `${nombre1}${nombre2}`.trim();
+                    const a = `${apellido1}${apellido2}`.trim();
+                    freshNombres = n || freshNombres;
+                    freshApellidos = a || freshApellidos;
+                    freshCorreo = p.correoElectronico || user?.email || freshCorreo;
+                } else {
+                    try {
+                        const token = localStorage.getItem('token');
+                        let allUsers = [];
+                        try {
+                            const rawUsers = await axios.get('http://localhost:8080/api/usuarios', { headers: { Authorization: `Bearer ${token}` } });
+                            allUsers = rawUsers.data?.content || rawUsers.data?.data || rawUsers.data || [];
+                        } catch (e) {
+                            const rawUsersV1 = await axios.get('http://localhost:8080/api/v1/usuarios', { headers: { Authorization: `Bearer ${token}` } });
+                            allUsers = rawUsersV1.data?.content || rawUsersV1.data?.data || rawUsersV1.data || [];
+                        }
+                        if (!Array.isArray(allUsers)) allUsers = [];
+                        const foundUser = allUsers.find(u => {
+                            const strBuscar = String(cedulaTrim);
+                            return String(u?.persona?.numeroDocumento) === strBuscar || String(u?.numeroDocumento) === strBuscar || String(u?.username) === strBuscar || String(u?.cedula) === strBuscar;
+                        });
+                        
+                        if (foundUser) {
+                            const p = foundUser.persona || {};
+                            freshPerfil = p.perfilVacunacion || freshPerfil;
+                            const nombre1 = p.primerNombre || '';
+                            const nombre2 = p.segundoNombre ? ` ${p.segundoNombre}` : '';
+                            const apellido1 = p.primerApellido || '';
+                            const apellido2 = p.segundoApellido ? ` ${p.segundoApellido}` : '';
+                            freshNombres = foundUser.nombres || `${nombre1}${nombre2}`.trim() || freshNombres;
+                            freshApellidos = foundUser.apellidos || `${apellido1}${apellido2}`.trim() || freshApellidos;
+                            freshCorreo = p.correoElectronico || foundUser.email || foundUser.username || freshCorreo;
+                        }
+                    } catch (err) {}
+                }
+
+                setCvNombre(`${freshNombres} ${freshApellidos}`);
+
                 setDatosCV({
-                    cedula: hv.cedula || '', nombres: hv.nombres || '', apellidos: hv.apellidos || '', fechaNacimiento: hv.fechaNacimiento || '', 
-                    direccionResidencia: hv.direccionResidencia || '', telefono: hv.telefono || '', correoElectronico: hv.correoElectronico || '', 
+                    cedula: hv.cedula || '', nombres: freshNombres, apellidos: freshApellidos, fechaNacimiento: hv.fechaNacimiento || '', 
+                    direccionResidencia: hv.direccionResidencia || '', telefono: hv.telefono || '', correoElectronico: freshCorreo, 
                     contactoEmergencia: hv.contactoEmergencia || '', telefonoContactoEmergencia: hv.telefonoContactoEmergencia || '', 
                     arl: hv.arl || '', eps: hv.eps || '', afp: hv.afp || '', cajaCompensacion: hv.cajaCompensacion || '',
                     fechaIngreso: hv.fechaIngreso || '', tipoContrato: hv.tipoContrato || '', sedeId: hv.sedes && hv.sedes.length > 0 ? hv.sedes[0].id : '', 
                     cargoId: hv.cargos && hv.cargos.length > 0 ? hv.cargos[0].id : '', salario: hv.salario || '', subsidioTransporte: hv.subsidioTransporte || '',
                     estado: hv.estado || '', fechaRetiro: hv.fechaRetiro || '', motivoRetiro: hv.motivoRetiro || '', usuarioId: hv.usuarioId || '', 
-                    perfilVacunacion: hv.perfilVacunacion || '', detalleVacunas: parsedVacunas
+                    perfilVacunacion: freshPerfil, detalleVacunas: parsedVacunas
                 });
 
                 try {

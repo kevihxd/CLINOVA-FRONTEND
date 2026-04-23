@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Shield, Map, Briefcase, ChevronRight } from 'lucide-react';
+import { Users, Shield, Map, Briefcase, ChevronRight, Syringe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const CONFIGURACION_OPTIONS = [
@@ -30,6 +30,13 @@ export const CONFIGURACION_OPTIONS = [
         icon: Briefcase,
         color: 'text-blue-600',
         description: 'Modelos de contratación de personal'
+    },
+    { 
+        title: 'Administración de Vacunas', 
+        path: '/configuracion/vacunas', 
+        icon: Syringe,
+        color: 'text-rose-600',
+        description: 'Configuración de perfiles biológicos y dosis requeridas'
     }
 ];
 
@@ -68,6 +75,14 @@ export const ConfiguracionOptions = ({ onClose }) => {
             color: 'text-blue-600',
             bgColor: 'bg-blue-50',
             description: 'Modelos de contratación de personal'
+        },
+        { 
+            title: 'Administración de Vacunas', 
+            path: '/configuracion/vacunas', 
+            icon: Syringe,
+            color: 'text-rose-600',
+            bgColor: 'bg-rose-50',
+            description: 'Configuración de perfiles biológicos y dosis requeridas'
         }
     ];
 

@@ -18,9 +18,17 @@ export const AdministracionVacunas = () => {
     const cargarVacunas = async () => {
         try {
             const res = await http.get('/vacunacion/catalogo');
-            setVacunas(res.data || res || []);
+            let data = res.data || res;
+            if (!Array.isArray(data)) {
+                data = data?.content || [];
+            }
+            if (!Array.isArray(data)) {
+                data = [];
+            }
+            setVacunas(data);
         } catch (error) {
             showAlert({ message: 'Error cargando vacunas', status: 'error' });
+            setVacunas([]);
         }
     };
 
