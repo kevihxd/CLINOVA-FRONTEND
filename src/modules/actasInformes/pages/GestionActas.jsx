@@ -3,6 +3,7 @@ import { Search, FileText, CalendarDays, ChevronDown, Plus, Download, Eye, Edit,
 import { useNavigate } from 'react-router-dom';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
+import { useAuth } from '../../../providers/AuthProvider';
 
 const StatCard = ({ icon: Icon, iconColor, title, value, subValue, subLabel }) => (
     <div className="bg-white p-6 rounded-lg border border-gray-200 flex items-center gap-4 shadow-sm">
@@ -31,6 +32,7 @@ const getStatusStyles = (estado) => {
 export const GestionActas = () => {
     const navigate = useNavigate();
     const { showAlert } = useAlert();
+    const { user } = useAuth(); 
     
     const [actas, setActas] = useState([]);
     const [plantillas, setPlantillas] = useState([]);
@@ -39,7 +41,6 @@ export const GestionActas = () => {
     const [selectedTemplate, setSelectedTemplate] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     
-    // Nuevo estado para controlar qué tabla ver
     const [activeTab, setActiveTab] = useState('actas');
 
     const fetchData = async () => {
@@ -58,6 +59,16 @@ export const GestionActas = () => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    const puedeEditarActa = (acta) => {
+        if (!user) return false;
+        if (user.rol === 'ADMIN') return true; 
+        if (user.rol === 'LIDER_DE_PROCESO') {
+
+            return acta.responsable === user.username; 
+        }
+        return false;
+    };
 
     const handleEliminarActa = async (id) => {
         if (!window.confirm('¿Seguro que desea eliminar esta acta?')) return;
@@ -181,8 +192,32 @@ export const GestionActas = () => {
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex items-center justify-center gap-1.5">
-                                                <button className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors" title="Editar"><Edit className="w-4.5 h-4.5" /></button>
-                                                <button onClick={() => handleEliminarActa(acta.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Eliminar"><Trash2 className="w-4.5 h-4.5" /></button>
+                                               
+                                                <button 
+                                                    onClick={() => navigate(`/actas-informes/acta/${acta.id}`)} 
+                                                    className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors" 
+                                                    title="Ver / Comentar"
+                                                >
+                                                    <Eye className="w-4.5 h-4.5" />
+                                                </button>
+
+                                                {puedeEditarActa(acta) && (
+                                                    <>
+                                                        <button 
+                                                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors" 
+                                                            title="Editar"
+                                                        >
+                                                            <Edit className="w-4.5 h-4.5" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleEliminarActa(acta.id)} 
+                                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" 
+                                                            title="Eliminar"
+                                                        >
+                                                            <Trash2 className="w-4.5 h-4.5" />
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
