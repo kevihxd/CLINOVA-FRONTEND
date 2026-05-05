@@ -51,7 +51,7 @@ export const CrearActa = () => {
             const fetchPlantilla = async () => {
                 try {
                     const res = await http.get(`/plantillas/${plantillaId}`);
-                    const data = res.data?.data || res.data;
+                    const data = res?.data?.data || res?.data || res;
                     setTitulo(`Acta basada en: ${data.titulo}`);
                     setContenido(data.contenidoHtml || '');
                     showAlert({ message: 'Plantilla cargada correctamente. Puede reemplazar las variables.', status: 'info' });

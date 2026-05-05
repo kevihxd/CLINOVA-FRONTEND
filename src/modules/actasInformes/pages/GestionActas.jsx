@@ -49,8 +49,10 @@ export const GestionActas = () => {
                 http.get('/actas'),
                 http.get('/plantillas')
             ]);
-            setActas(resActas.data?.data || resActas.data || []);
-            setPlantillas(resPlantillas.data?.data || resPlantillas.data || []);
+            const dataActas = Array.isArray(resActas) ? resActas : (resActas.data?.data || resActas.data || resActas || []);
+            const dataPlantillas = Array.isArray(resPlantillas) ? resPlantillas : (resPlantillas.data?.data || resPlantillas.data || resPlantillas || []);
+            setActas(dataActas);
+            setPlantillas(dataPlantillas);
         } catch (error) {
             showAlert({ message: 'Error al cargar los datos. Verifique conexión con el servidor.', status: 'error' });
         }

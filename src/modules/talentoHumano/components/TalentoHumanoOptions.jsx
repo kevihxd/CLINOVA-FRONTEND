@@ -4,6 +4,7 @@ import { useAuth } from '../../../providers/AuthProvider';
 
 export const TALENTO_HUMANO_OPTIONS = [
     { title: 'Hoja de Vida', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', page: '/talentoHumano/hoja-de-vida' },
+    { title: 'Incapacidades', icon: FileSpreadsheet, color: 'text-rose-600', bg: 'bg-rose-50', page: '/talentoHumano/incapacidades' },
     { title: 'Importar Vacunas', icon: FileSpreadsheet, color: 'text-green-600', bg: 'bg-green-50', page: '/talentoHumano/importar-vacunas' }
 ];
 

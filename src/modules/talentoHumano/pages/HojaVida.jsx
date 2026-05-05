@@ -33,6 +33,8 @@ export const HojaVida = () => {
 
     const [catalogoVacunasGlobal, setCatalogoVacunasGlobal] = useState([]);
     const [categoriasSoportes, setCategoriasSoportes] = useState([]);
+    const [catalogoCargos, setCatalogoCargos] = useState([]);
+    const [catalogoSedes, setCatalogoSedes] = useState([]);
 
     const [datosCV, setDatosCV] = useState({
         cedula: '', nombres: '', apellidos: '', fechaNacimiento: '', direccionResidencia: '',
@@ -89,10 +91,23 @@ export const HojaVida = () => {
         }
     }, []);
 
+    const cargarCargosSedes = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const resCargos = await axios.get('http://localhost:8080/api/cargos', { 
+                headers: { Authorization: `Bearer ${token}` } 
+            });
+            setCatalogoCargos(resCargos.data || []);
+            const resSedes = await http.get('/sedes');
+            setCatalogoSedes(resSedes.data || []);
+        } catch (e) {}
+    }, []);
+
     useEffect(() => {
         cargarVacunas();
         cargarCategoriasSoportes();
-    }, [cargarVacunas, cargarCategoriasSoportes]);
+        cargarCargosSedes();
+    }, [cargarVacunas, cargarCategoriasSoportes, cargarCargosSedes]);
 
     useEffect(() => {
         if (isStandardUser && userCedula) {
@@ -151,6 +166,7 @@ export const HojaVida = () => {
                 let freshNombres = hv.nombres || '';
                 let freshApellidos = hv.apellidos || '';
                 let freshCorreo = hv.correoElectronico || '';
+                let freshCargoId = hv.cargos?.[0]?.id || '';
 
                 if (isStandardUser) {
                     const p = user?.persona || {};
@@ -158,6 +174,7 @@ export const HojaVida = () => {
                     freshNombres = `${p.primerNombre || ''} ${p.segundoNombre || ''}`.trim() || freshNombres;
                     freshApellidos = `${p.primerApellido || ''} ${p.segundoApellido || ''}`.trim() || freshApellidos;
                     freshCorreo = p.correoElectronico || user?.email || freshCorreo;
+                    freshCargoId = user?.cargo?.id || freshCargoId;
                 } else {
                     try {
                         const token = localStorage.getItem('token');
@@ -175,6 +192,7 @@ export const HojaVida = () => {
                             freshNombres = foundUser.nombres || `${p.primerNombre || ''} ${p.segundoNombre || ''}`.trim() || freshNombres;
                             freshApellidos = foundUser.apellidos || `${p.primerApellido || ''} ${p.segundoApellido || ''}`.trim() || freshApellidos;
                             freshCorreo = p.correoElectronico || foundUser.email || foundUser.username || freshCorreo;
+                            freshCargoId = foundUser.cargo?.id || freshCargoId;
                         }
                     } catch (err) {}
                 }
@@ -186,7 +204,7 @@ export const HojaVida = () => {
                     contactoEmergencia: hv.contactoEmergencia || '', telefonoContactoEmergencia: hv.telefonoContactoEmergencia || '', 
                     arl: hv.arl || '', eps: hv.eps || '', afp: hv.afp || '', cajaCompensacion: hv.cajaCompensacion || '',
                     fechaIngreso: hv.fechaIngreso || '', tipoContrato: hv.tipoContrato || '', sedeId: hv.sedes?.[0]?.id || '', 
-                    cargoId: hv.cargos?.[0]?.id || '', salario: hv.salario || '', subsidioTransporte: hv.subsidioTransporte || '',
+                    cargoId: freshCargoId, salario: hv.salario || '', subsidioTransporte: hv.subsidioTransporte || '',
                     estado: hv.estado || '', fechaRetiro: hv.fechaRetiro || '', motivoRetiro: hv.motivoRetiro || '', usuarioId: hv.usuarioId || '', 
                     perfilVacunacion: freshPerfil, detalleVacunas: parsedVacunas
                 });
@@ -236,7 +254,8 @@ export const HojaVida = () => {
                             telefonoContactoEmergencia: null, arl: null, eps: null, afp: null, cajaCompensacion: null, 
                             salario: null, subsidioTransporte: null, fechaIngreso: fallbackIngreso, estado: null, tipoContrato: null, 
                             fechaRetiro: null, motivoRetiro: null, correoElectronico: finalCorreo, perfilVacunacion: prePerfil || null, 
-                            detalleVacunas: '[]', usuarioId: foundUser.id ? parseInt(foundUser.id) : null, cargosIds: [], sedesIds: []
+                            detalleVacunas: '[]', usuarioId: foundUser.id ? parseInt(foundUser.id) : null, 
+                            cargosIds: foundUser.cargo ? [parseInt(foundUser.cargo.id)] : [], sedesIds: []
                         };
 
                         const responseData = await http.post('/hojas-vida', payload);
@@ -248,7 +267,7 @@ export const HojaVida = () => {
                             cedula: cedulaTrim, nombres: finalNombres, apellidos: finalApellidos, fechaNacimiento: '', 
                             direccionResidencia: p.direccionResidencia || '', telefono: p.numeroTelefono || '', correoElectronico: finalCorreo || '', 
                             contactoEmergencia: '', telefonoContactoEmergencia: '', arl: '', eps: '', afp: '', cajaCompensacion: '',
-                            fechaIngreso: fallbackIngreso, tipoContrato: '', sedeId: '', cargoId: '', salario: '', subsidioTransporte: '',
+                            fechaIngreso: fallbackIngreso, tipoContrato: '', sedeId: '', cargoId: foundUser.cargo?.id || '', salario: '', subsidioTransporte: '',
                             estado: '', fechaRetiro: '', motivoRetiro: '', usuarioId: foundUser.id || '', perfilVacunacion: prePerfil, detalleVacunas: []
                         });
                     } else {
@@ -266,7 +285,7 @@ export const HojaVida = () => {
                     cedula: cedulaTrim, nombres: `${p.primerNombre || ''} ${p.segundoNombre || ''}`.trim(), apellidos: `${p.primerApellido || ''} ${p.segundoApellido || ''}`.trim(), 
                     fechaNacimiento: '', direccionResidencia: '', telefono: '', correoElectronico: p.correoElectronico || user?.email || '', 
                     contactoEmergencia: '', telefonoContactoEmergencia: '', arl: '', eps: '', afp: '', cajaCompensacion: '',
-                    fechaIngreso: '', tipoContrato: '', sedeId: '', cargoId: '', salario: '', subsidioTransporte: '', estado: '', fechaRetiro: '', motivoRetiro: '', 
+                    fechaIngreso: '', tipoContrato: '', sedeId: '', cargoId: user?.cargo?.id || '', salario: '', subsidioTransporte: '', estado: '', fechaRetiro: '', motivoRetiro: '', 
                     usuarioId: user?.id || '', perfilVacunacion: p.perfilVacunacion || '', detalleVacunas: []
                 });
             }
@@ -590,8 +609,24 @@ export const HojaVida = () => {
                                             <div><label className={labelClass}>Caja de compensación</label><input type="text" className={inputClass} value={datosCV.cajaCompensacion} onChange={(e) => setDatosCV({...datosCV, cajaCompensacion: e.target.value})} /></div>
                                             <div><label className={labelClass}>Fecha de ingreso</label><input type="date" className={inputClass} value={datosCV.fechaIngreso} onChange={(e) => setDatosCV({...datosCV, fechaIngreso: e.target.value})} /></div>
                                             <div><label className={labelClass}>Tipo de contrato</label><select className={inputClass} value={datosCV.tipoContrato} onChange={(e) => setDatosCV({...datosCV, tipoContrato: e.target.value})}><option value="">Seleccione...</option><option value="Fijo">Término Fijo</option><option value="Indefinido">Término Indefinido</option><option value="Prestacion">Prestación de Servicios</option></select></div>
-                                            <div><label className={labelClass}>Sede</label><input type="text" className={inputClass} value={datosCV.sedeId} onChange={(e) => setDatosCV({...datosCV, sedeId: e.target.value})} /></div>
-                                            <div><label className={labelClass}>Cargo</label><input type="text" className={inputClass} value={datosCV.cargoId} onChange={(e) => setDatosCV({...datosCV, cargoId: e.target.value})} /></div>
+                                            <div>
+                                                <label className={labelClass}>Sede</label>
+                                                <select className={inputClass} value={datosCV.sedeId} onChange={(e) => setDatosCV({...datosCV, sedeId: e.target.value})}>
+                                                    <option value="">Seleccione Sede...</option>
+                                                    {catalogoSedes.map(sede => (
+                                                        <option key={sede.id} value={sede.id}>{sede.nombre}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className={labelClass}>Cargo</label>
+                                                <select className={inputClass} value={datosCV.cargoId} onChange={(e) => setDatosCV({...datosCV, cargoId: e.target.value})}>
+                                                    <option value="">Seleccione Cargo...</option>
+                                                    {catalogoCargos.map(cargo => (
+                                                        <option key={cargo.id} value={cargo.id}>{cargo.nombre}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                             <div><label className={labelClass}>Salario</label><input type="number" className={inputClass} value={datosCV.salario} onChange={(e) => setDatosCV({...datosCV, salario: e.target.value})} /></div>
                                             <div><label className={labelClass}>Subsidio de transporte</label><select className={inputClass} value={datosCV.subsidioTransporte} onChange={(e) => setDatosCV({...datosCV, subsidioTransporte: e.target.value})}><option value="">Seleccione...</option><option value="Si">Sí</option><option value="No">No</option></select></div>
                                             <div><label className={labelClass}>Estado</label><select className={inputClass} value={datosCV.estado} onChange={(e) => setDatosCV({...datosCV, estado: e.target.value})}><option value="">Seleccione...</option><option value="Activo">Activo</option><option value="Inactivo">Inactivo</option></select></div>

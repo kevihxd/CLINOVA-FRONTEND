@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Send, MessageSquare, Printer } from 'lucide-react';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
 
@@ -24,8 +24,16 @@ export const ActaDetalle = () => {
                 http.get(`/actas/${id}`),
                 http.get(`/actas/${id}/comentarios`)
             ]);
-            setActa(resActa.data?.data || resActa.data);
-            setComentarios(resComentarios.data?.data || resComentarios.data || []);
+            const dataActa = resActa?.data?.data || resActa?.data || resActa;
+            let dataComentarios = [];
+            if (Array.isArray(resComentarios)) dataComentarios = resComentarios;
+            else if (Array.isArray(resComentarios?.data)) dataComentarios = resComentarios.data;
+            else if (Array.isArray(resComentarios?.data?.data)) dataComentarios = resComentarios.data.data;
+            else if (Array.isArray(resComentarios?.content)) dataComentarios = resComentarios.content;
+            else if (Array.isArray(resComentarios?.comentarios)) dataComentarios = resComentarios.comentarios;
+            
+            setActa(dataActa);
+            setComentarios(dataComentarios.filter(Boolean));
         } catch (error) {
             showAlert({ message: 'Error al cargar el acta o los comentarios', status: 'error' });
             navigate('/actas-informes/gestion');
@@ -42,8 +50,10 @@ export const ActaDetalle = () => {
             const res = await http.post(`/actas/${id}/comentarios`, nuevoComentario, {
                 headers: { 'Content-Type': 'text/plain' }
             });
-            const comentarioAgregado = res.data?.data || res.data;
-            setComentarios([comentarioAgregado, ...comentarios]);
+            const comentarioAgregado = res?.data?.data || res?.data || res;
+            if (comentarioAgregado) {
+                setComentarios([comentarioAgregado, ...comentarios]);
+            }
             setNuevoComentario('');
             showAlert({ message: 'Comentario agregado', status: 'success' });
         } catch (error) {
@@ -58,12 +68,21 @@ export const ActaDetalle = () => {
         <div className="min-h-screen bg-gray-50 p-6 md:p-8">
             <div className="max-w-[1200px] mx-auto space-y-6">
                 
-                <button 
-                    onClick={() => navigate('/actas-informes/gestion')}
-                    className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5" /> Volver a Gestión
-                </button>
+                <div className="flex items-center justify-between">
+                    <button 
+                        onClick={() => navigate('/actas-informes/gestion')}
+                        className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" /> Volver a Gestión
+                    </button>
+
+                    <button 
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm"
+                    >
+                        <Printer className="w-4 h-4" /> Imprimir / Descargar PDF
+                    </button>
+                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Visualizador del Acta */}
@@ -93,15 +112,15 @@ export const ActaDetalle = () => {
                             {comentarios.length === 0 ? (
                                 <p className="text-center text-gray-400 text-sm mt-10">No hay comentarios aún.</p>
                             ) : (
-                                comentarios.map(com => (
-                                    <div key={com.id} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                                comentarios.map((com, index) => (
+                                    <div key={com?.id || index} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
                                         <div className="flex justify-between items-start mb-2">
-                                            <span className="text-sm font-bold text-gray-800">{com.autorNombre || com.autorUsername}</span>
+                                            <span className="text-sm font-bold text-gray-800">{com?.autorNombre || com?.autorUsername || 'Usuario'}</span>
                                             <span className="text-xs text-gray-400">
-                                                {new Date(com.fechaCreacion).toLocaleString()}
+                                                {com?.fechaCreacion ? new Date(com.fechaCreacion).toLocaleString() : ''}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-gray-600 whitespace-pre-wrap">{com.contenido}</p>
+                                        <p className="text-sm text-gray-600 whitespace-pre-wrap">{com?.contenido || ''}</p>
                                     </div>
                                 ))
                             )}

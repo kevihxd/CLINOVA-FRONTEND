@@ -34,6 +34,9 @@ export const AlertProvider = ({ children }) => {
             icon: icon,
             confirmButtonText: 'Aceptar',
             confirmButtonColor: '#3085d6',
+            customClass: {
+                container: '!z-[99999]' // Soluciona el problema de la pantalla bloqueada
+            }
         });
     }, []);
 

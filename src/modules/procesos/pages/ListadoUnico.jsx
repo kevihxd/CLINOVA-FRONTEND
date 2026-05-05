@@ -35,8 +35,11 @@ export const ListadoUnico = () => {
                 http.get('/tipos-documento').catch(() => ({ data: [] }))
             ]);
             
-            setDocumentos(resDocs.data?.data || resDocs.data || []);
-            setTiposDocumento(resTipos.data?.data || resTipos.data || []);
+            const dataDocs = Array.isArray(resDocs) ? resDocs : (resDocs?.data?.data || resDocs?.data || resDocs || []);
+            const dataTipos = Array.isArray(resTipos) ? resTipos : (resTipos?.data?.data || resTipos?.data || resTipos || []);
+            
+            setDocumentos(dataDocs);
+            setTiposDocumento(dataTipos);
         } catch (error) {}
     };
 

@@ -56,7 +56,7 @@ export const CrearPlantilla = () => {
             const fetchTemplateData = async () => {
                 try {
                     const res = await http.get(`/plantillas/${editId}`);
-                    const data = res.data?.data || res.data;
+                    const data = res?.data?.data || res?.data || res;
                     setTitulo(data.titulo);
                     setDescripcion(data.descripcion || '');
                     setContenido(data.contenidoHtml || '');

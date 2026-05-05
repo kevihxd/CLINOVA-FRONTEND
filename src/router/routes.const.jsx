@@ -3,6 +3,7 @@ import { HojaVida } from '../modules/talentoHumano/pages/HojaVida';
 import { Organigrama } from '../modules/talentoHumano/pages/Organigrama';
 import { VerDetalleCargo } from '../modules/talentoHumano/pages/VerDetalleCargo';
 import { TipoDocumento } from '../modules/talentoHumano/pages/TipoDocumento'; 
+import { Incapacidades } from '../modules/talentoHumano/pages/Incapacidades';
 import { MapaProcesos } from '../modules/procesos/pages/MapaProcesos';
 import { TipoDocumentos } from '../modules/procesos/pages/TipoDocumentos'; 
 import { ListadoUnico } from '../modules/procesos/pages/ListadoUnico'; 
@@ -23,6 +24,8 @@ import { GestionCargos } from '../modules/configuracion/pages/GestionCargos';
 import { GestionActas } from '../modules/actasInformes/pages/GestionActas';
 import { CrearPlantilla } from '../modules/actasInformes/pages/CrearPlantilla';
 import { CrearActa } from '../modules/actasInformes/pages/CrearActa';
+import { ActaDetalle } from '../modules/actasInformes/pages/ActaDetalle';
+import { Informes } from '../modules/actasInformes/pages/Informes';
 import { AdministracionVacunas } from '../modules/configuracion/pages/AdministracionVacunas';
 
 export const ROUTES = {
@@ -34,6 +37,7 @@ export const ROUTES = {
     ORGANIGRAMA: { path: '/talentoHumano/organigrama', title: 'Organigrama', element: <Organigrama /> },
     VER_DETALLE: { path: '/talentoHumano/perfiles-cargo/:id', title: 'Detalle de Cargo', element: <VerDetalleCargo /> },
     TIPO_DOCUMENTO: { path: '/talentoHumano/tipo-documento', title: 'Tipo de Documento', element: <TipoDocumento /> },
+    INCAPACIDADES: { path: '/talentoHumano/incapacidades', title: 'Incapacidades', element: <Incapacidades /> },
   },
   PROCESOS: {
     MAPA_PROCESOS: { path: '/procesos/mapa', title: 'Mapa de Procesos', element: <MapaProcesos /> },
@@ -61,8 +65,10 @@ export const ROUTES = {
     VACUNAS: { path: '/configuracion/vacunas', title: 'Administración de Vacunas', element: <AdministracionVacunas /> }
   },
   ACTAS_INFORMES: {
-    GESTION_ACTAS: { path: '/actas-informes/gestion-actas', title: 'Gestión de Actas', element: <GestionActas /> },
+    GESTION_ACTAS: { path: '/actas-informes/gestion', title: 'Gestión de Actas', element: <GestionActas /> },
     CREAR_PLANTILLA: { path: '/actas-informes/crear-plantilla', title: 'Crear Plantilla', element: <CrearPlantilla /> },
-    CREAR_ACTA: { path: '/actas-informes/crear-acta', title: 'Crear Acta', element: <CrearActa /> }
+    CREAR_ACTA: { path: '/actas-informes/crear-acta', title: 'Crear Acta', element: <CrearActa /> },
+    ACTA_DETALLE: { path: '/actas-informes/acta/:id', title: 'Detalle de Acta', element: <ActaDetalle /> },
+    INFORMES: { path: '/actas-informes/informes', title: 'Informes', element: <Informes /> }
   },
 };
