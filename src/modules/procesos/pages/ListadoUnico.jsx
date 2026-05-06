@@ -61,9 +61,14 @@ export const ListadoUnico = () => {
         } catch (error) {}
     };
 
-    const handleDownload = async (id) => {
+    const handleDownload = async (doc) => {
+        if (!doc.ubicacion || doc.ubicacion === 'SIN_ARCHIVO') {
+            showAlert({ message: 'Este documento se creó sin un archivo físico. No hay nada para visualizar o descargar.', status: 'warning' });
+            return;
+        }
+
         try {
-            const blob = await http.get(`/documentos/descargar/${id}`, { responseType: 'blob' });
+            const blob = await http.get(`/documentos/descargar/${doc.id}`, { responseType: 'blob' });
             const url = window.URL.createObjectURL(blob);
             window.open(url, '_blank');
         } catch (error) {
@@ -206,10 +211,10 @@ export const ListadoUnico = () => {
                                                     {isAdmin && doc.estado === 'EN REVISIÓN' && (
                                                         <button onClick={() => aprobarDoc(doc.id)} className="p-1 text-emerald-500 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded" title="Dar Visto Bueno"><CheckCircle size={14} /></button>
                                                     )}
-                                                    <button onClick={() => handleDownload(doc.id)} className="p-1 text-slate-400 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-slate-200 rounded" title="Ver"><Eye size={14} /></button>
+                                                    <button onClick={() => handleDownload(doc)} className="p-1 text-slate-400 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-slate-200 rounded" title="Ver"><Eye size={14} /></button>
                                                     <button className="p-1 text-slate-400 hover:text-amber-600 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded" title="Editar"><Edit2 size={14} /></button>
                                                     <button onClick={() => eliminarDocumento(doc.id)} className="p-1 text-slate-400 hover:text-red-600 bg-slate-100 hover:bg-red-50 border border-slate-200 rounded" title="Eliminar"><Trash2 size={14} /></button>
-                                                    <button onClick={() => handleDownload(doc.id)} className="p-1 text-slate-400 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 border border-slate-200 rounded" title="Descargar"><Download size={14} /></button>
+                                                    <button onClick={() => handleDownload(doc)} className="p-1 text-slate-400 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 border border-slate-200 rounded" title="Descargar"><Download size={14} /></button>
                                                 </div>
                                             </td>
                                         </tr>

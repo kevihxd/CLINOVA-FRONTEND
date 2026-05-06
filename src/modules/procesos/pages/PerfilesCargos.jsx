@@ -30,7 +30,7 @@ export const PerfilesCargos = () => {
 
     const fetchCargos = async () => {
         try {
-            const res = await fetch('http://localhost:8080/api/cargos', {
+            const res = await fetch('http://localhost:8080/api/v1/cargos', {
                 headers: getAuthHeaders()
             });
             if (res.ok) setCargos(await res.json());

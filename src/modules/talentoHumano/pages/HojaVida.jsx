@@ -41,7 +41,8 @@ export const HojaVida = () => {
         telefono: '', correoElectronico: '', contactoEmergencia: '', telefonoContactoEmergencia: '', 
         arl: '', eps: '', afp: '', cajaCompensacion: '', fechaIngreso: '', tipoContrato: '', 
         sedeId: '', cargoId: '', salario: '', subsidioTransporte: '', estado: '', 
-        fechaRetiro: '', motivoRetiro: '', usuarioId: '', perfilVacunacion: '', detalleVacunas: []
+        fechaRetiro: '', motivoRetiro: '', usuarioId: '', perfilVacunacion: '', detalleVacunas: [],
+        fotoUrl: ''
     });
     
     const [resultadosIA, setResultadosIA] = useState([]);
@@ -94,7 +95,7 @@ export const HojaVida = () => {
     const cargarCargosSedes = useCallback(async () => {
         try {
             const token = localStorage.getItem('token');
-            const resCargos = await axios.get('http://localhost:8080/api/cargos', { 
+            const resCargos = await axios.get('http://localhost:8080/api/v1/cargos', { 
                 headers: { Authorization: `Bearer ${token}` } 
             });
             setCatalogoCargos(resCargos.data || []);
@@ -206,7 +207,8 @@ export const HojaVida = () => {
                     fechaIngreso: hv.fechaIngreso || '', tipoContrato: hv.tipoContrato || '', sedeId: hv.sedes?.[0]?.id || '', 
                     cargoId: freshCargoId, salario: hv.salario || '', subsidioTransporte: hv.subsidioTransporte || '',
                     estado: hv.estado || '', fechaRetiro: hv.fechaRetiro || '', motivoRetiro: hv.motivoRetiro || '', usuarioId: hv.usuarioId || '', 
-                    perfilVacunacion: freshPerfil, detalleVacunas: parsedVacunas
+                    perfilVacunacion: freshPerfil, detalleVacunas: parsedVacunas,
+                    fotoUrl: hv.fotoUrl ? `http://localhost:8080${hv.fotoUrl}?t=${Date.now()}` : ''
                 });
 
                 try {
@@ -429,23 +431,82 @@ export const HojaVida = () => {
         } catch (error) {}
     };
 
-    const getCleanUrl = (ruta) => {
-        let clean = ruta;
-        if (clean.includes('api/v1/')) clean = clean.split('api/v1/')[1];
-        if (clean.startsWith('/')) clean = clean.substring(1);
-        return `http://localhost:8080/${clean}`;
+    const handleSubirFoto = async (e) => {
+        const archivo = e.target.files[0];
+        if (!archivo) return;
+        if (!archivo.type.startsWith('image/')) {
+            alert('Por favor selecciona un archivo de imagen válido.');
+            return;
+        }
+        // Preview local inmediato mientras sube
+        const previewUrl = URL.createObjectURL(archivo);
+        setDatosCV(prev => ({ ...prev, fotoUrl: previewUrl, _fotoEsPreview: true }));
+        try {
+            const formData = new FormData();
+            formData.append('foto', archivo);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:8080/api/v1/hojas-vida/${hojaVidaId}/foto`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData
+            });
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`Error ${response.status}: ${errText}`);
+            }
+            const data = await response.json();
+            // El backend devuelve HojaVidaResponseDTO directamente (sin wrapper .data)
+            const nuevaFotoUrl = data?.fotoUrl || data?.data?.fotoUrl || '';
+            // Añadir timestamp para evitar caché del browser
+            const urlConCache = nuevaFotoUrl ? `http://localhost:8080${nuevaFotoUrl}?t=${Date.now()}` : previewUrl;
+            URL.revokeObjectURL(previewUrl);
+            setDatosCV(prev => ({ ...prev, fotoUrl: urlConCache, _fotoEsPreview: false }));
+            showAlert({ message: 'Foto actualizada correctamente', status: 'success' });
+        } catch (err) {
+            URL.revokeObjectURL(previewUrl);
+            setDatosCV(prev => ({ ...prev, fotoUrl: '', _fotoEsPreview: false }));
+            showAlert({ message: 'Error al subir la foto: ' + err.message, status: 'error' });
+        }
+        // Limpiar input para permitir subir la misma imagen de nuevo
+        e.target.value = '';
     };
 
-    const verDocumento = (rutaArchivo) => window.open(getCleanUrl(rutaArchivo), '_blank');
+    const verDocumento = async (soporteId, nombreArchivo) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:8080/api/v1/soportes/${soporteId}/ver`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('No se pudo obtener el archivo');
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        } catch (e) {
+            alert('Error al abrir el documento: ' + e.message);
+        }
+    };
 
-    const handleDescargarDocumento = (rutaArchivo, nombreArchivo) => {
-        const link = document.createElement('a');
-        link.href = getCleanUrl(rutaArchivo);
-        link.download = nombreArchivo || 'documento.pdf';
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const handleDescargarDocumento = async (soporteId, nombreArchivo) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:8080/api/v1/soportes/${soporteId}/ver`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('No se pudo descargar el archivo');
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = nombreArchivo || 'documento.pdf';
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        } catch (e) {
+            alert('Error al descargar el documento: ' + e.message);
+        }
     };
 
     const handleCrearCursoCatalogo = async (e) => {
@@ -584,6 +645,32 @@ export const HojaVida = () => {
                         <div className="p-4 md:p-6">
                             {activeTab === 'datos' && (
                                 <form onSubmit={handleCrearCV} className="space-y-6">
+                                    {/* --- FOTO DE PERFIL --- */}
+                                    <div className="flex items-center gap-5 pb-5 border-b border-gray-100">
+                                        <div className="relative shrink-0">
+                                            <div className="w-24 h-24 rounded-full border-2 border-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center shadow-sm">
+                                                {datosCV.fotoUrl ? (
+                                                    <img
+                                                        src={datosCV.fotoUrl?.startsWith('blob:') || datosCV.fotoUrl?.startsWith('http') ? datosCV.fotoUrl : `http://localhost:8080${datosCV.fotoUrl}`}
+                                                        alt="Foto de perfil"
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                                    />
+                                                ) : (
+                                                    <User className="w-10 h-10 text-gray-300" />
+                                                )}
+                                            </div>
+                                            <label htmlFor="foto-upload" className="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center cursor-pointer shadow-md transition-colors" title="Cambiar foto">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                            </label>
+                                            <input id="foto-upload" type="file" accept="image/*" className="hidden" onChange={handleSubirFoto} disabled={!hojaVidaId} />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-gray-800 text-sm">{datosCV.nombres} {datosCV.apellidos}</p>
+                                            <p className="text-xs text-gray-500 mt-0.5">CC {datosCV.cedula}</p>
+                                            <p className="text-xs text-gray-400 mt-2">{datosCV.fotoUrl ? 'Haz clic en el ícono de cámara para cambiar la foto' : 'Sin foto — haz clic en el ícono de cámara para subir una'}</p>
+                                        </div>
+                                    </div>
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-y-6 lg:gap-x-12">
                                         <div className="space-y-4">
                                             <div><label className={labelClass}>Cédula de ciudadanía</label><input required readOnly type="text" className={`${inputClass} ${readOnlyClass}`} value={datosCV.cedula} /></div>
@@ -696,8 +783,8 @@ export const HojaVida = () => {
                                                                             </div>
                                                                         )}
                                                                         <div className="mt-auto pt-2 grid grid-cols-4 gap-1.5">
-                                                                            <button type="button" onClick={() => verDocumento(doc.rutaArchivo)} className="py-1.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 flex justify-center"><Eye className="w-3.5 h-3.5" /></button>
-                                                                            <button type="button" onClick={() => handleDescargarDocumento(doc.rutaArchivo, doc.nombreArchivo)} className="py-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 flex justify-center"><DownloadCloud className="w-3.5 h-3.5" /></button>
+                                                                            <button type="button" onClick={() => verDocumento(doc.id, doc.nombreArchivo)} className="py-1.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 flex justify-center"><Eye className="w-3.5 h-3.5" /></button>
+                                                                            <button type="button" onClick={() => handleDescargarDocumento(doc.id, doc.nombreArchivo)} className="py-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 flex justify-center"><DownloadCloud className="w-3.5 h-3.5" /></button>
                                                                             {isAdminOrHR ? <button type="button" onClick={() => { setDocToReject(doc); setRejectModalOpen(true); }} className="py-1.5 bg-orange-50 text-orange-600 rounded hover:bg-orange-100 flex justify-center"><AlertCircle className="w-3.5 h-3.5" /></button> : <div className="py-1.5 bg-transparent"></div>}
                                                                             <button type="button" onClick={() => handleEliminarDocumento(doc.id)} className="py-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100 flex justify-center"><Trash2 className="w-3.5 h-3.5" /></button>
                                                                         </div>
@@ -731,7 +818,7 @@ export const HojaVida = () => {
                                                         <div className="bg-white border border-blue-200 p-4 rounded shadow-sm flex flex-col gap-3">
                                                             <div className="flex items-center gap-2 overflow-hidden"><FileText className="w-5 h-5 text-red-500 shrink-0" /><h4 className="font-semibold text-gray-800 text-xs truncate">{carnetDocumento.tipoDocumento}</h4></div>
                                                             <div className="grid grid-cols-2 gap-2 mt-2">
-                                                                <button type="button" onClick={() => verDocumento(carnetDocumento.rutaArchivo)} className="py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded hover:bg-gray-200 flex justify-center"><Eye size={14}/></button>
+                                                                <button type="button" onClick={() => verDocumento(carnetDocumento.id, carnetDocumento.nombreArchivo)} className="py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded hover:bg-gray-200 flex justify-center"><Eye size={14}/></button>
                                                                 <button type="button" onClick={() => handleEliminarDocumento(carnetDocumento.id)} className="py-2 bg-red-50 text-red-600 text-xs font-bold rounded hover:bg-red-100 flex justify-center"><Trash2 size={14}/></button>
                                                             </div>
                                                         </div>

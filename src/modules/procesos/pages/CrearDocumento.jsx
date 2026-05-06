@@ -72,6 +72,7 @@ export const CrearDocumentoForm = () => {
     const [tiposDocumento, setTiposDocumento] = useState([]);
     const [cargos, setCargos] = useState([]);
     const [sedes, setSedes] = useState([]);
+    const [usuarios, setUsuarios] = useState([]);
 
     const procesos = [
         'GESTIÓN DE HUMANIZACIÓN', 'GESTIÓN COMERCIAL Y MERCADEO', 'GESTIÓN ESTRATÉGICA', 
@@ -98,14 +99,17 @@ export const CrearDocumentoForm = () => {
     const [responsableTipo, setResponsableTipo] = useState('usuarios');
     const [visualizacionPermisoTipo, setVisualizacionPermisoTipo] = useState('grupos');
     const [impresionPermisoTipo, setImpresionPermisoTipo] = useState('grupos');
+    const [descargaOriginalTipo, setDescargaOriginalTipo] = useState('grupos');
+    const [descargaPdfTipo, setDescargaPdfTipo] = useState('grupos');
 
     useEffect(() => {
         const fetchDatosGlobales = async () => {
             try {
-                const [resTipos, resCargos, resSedes] = await Promise.all([
+                const [resTipos, resCargos, resSedes, resUsuarios] = await Promise.all([
                     http.get('/tipos-documento').catch(() => ({ data: [] })),
                     http.get('/cargos').catch(() => ({ data: [] })),
-                    http.get('/sedes').catch(() => ({ data: [] }))
+                    http.get('/sedes').catch(() => ({ data: [] })),
+                    http.get('/usuarios').catch(() => ({ data: [] }))
                 ]);
                 
                 const tipos = resTipos.data?.data || resTipos.data || [];
@@ -116,10 +120,23 @@ export const CrearDocumentoForm = () => {
 
                 const sedesList = resSedes.data?.data || resSedes.data || [];
                 setSedes(sedesList.map(s => s.nombre));
+
+                const usuariosList = resUsuarios.data?.content || resUsuarios.data?.data || resUsuarios.data || [];
+                setUsuarios(usuariosList.map(u => {
+                    const fullName = u.persona ? `${u.persona.primerNombre || ''} ${u.persona.primerApellido || ''}`.trim() : `${u.nombres || ''} ${u.apellidos || ''}`.trim();
+                    return fullName || u.username;
+                }));
             } catch (error) {}
         };
         fetchDatosGlobales();
     }, []);
+
+    const getOptions = (tipo) => {
+        if (tipo === 'usuarios') return usuarios;
+        if (tipo === 'cargos') return cargos;
+        if (tipo === 'grupos') return grupos;
+        return [];
+    };
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
     const updateListState = (listName, newSelectedOptions) => setFormData(prev => ({ ...prev, [listName]: newSelectedOptions }));
@@ -127,6 +144,11 @@ export const CrearDocumentoForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        if (metodoCreacion === 'Archivo (Office, PDF)' && !archivoPdf && !archivoOriginal) {
+            showAlert({ message: 'Debe subir un archivo (Original o PDF) para este método de creación.', status: 'warning' });
+            return;
+        }
+
         const data = new FormData();
         
         data.append('nombre', formData.nombre);
@@ -208,7 +230,7 @@ export const CrearDocumentoForm = () => {
                                                     <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" name="resp_nv" checked={responsableTipo === 'usuarios'} onChange={() => setResponsableTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label>
                                                     <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" name="resp_nv" checked={responsableTipo === 'cargos'} onChange={() => setResponsableTipo('cargos')} className="text-blue-600" /> Por Cargos</label>
                                                 </div>
-                                                <DualListbox options={cargos} selectedOptions={formData.elabora} onChange={(val) => updateListState('elabora', val)} />
+                                                <DualListbox options={getOptions(responsableTipo)} selectedOptions={formData.elabora} onChange={(val) => updateListState('elabora', val)} />
                                             </div>
                                             <div className="flex flex-col gap-3">
                                                 <label className="text-sm font-bold text-slate-700">Visualización</label>
@@ -217,7 +239,7 @@ export const CrearDocumentoForm = () => {
                                                     <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" name="vis_nv" checked={visualizacionPermisoTipo === 'cargos'} onChange={() => setVisualizacionPermisoTipo('cargos')} className="text-blue-600" /> Por Cargos</label>
                                                     <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" name="vis_nv" checked={visualizacionPermisoTipo === 'grupos'} onChange={() => setVisualizacionPermisoTipo('grupos')} className="text-blue-600" /> Por Grupos</label>
                                                 </div>
-                                                <DualListbox options={grupos} selectedOptions={formData.visualizacion} onChange={(val) => updateListState('visualizacion', val)} />
+                                                <DualListbox options={getOptions(visualizacionPermisoTipo)} selectedOptions={formData.visualizacion} onChange={(val) => updateListState('visualizacion', val)} />
                                             </div>
                                             <div className="flex flex-col gap-3">
                                                 <label className="text-sm font-bold text-slate-700">Impresión</label>
@@ -226,7 +248,7 @@ export const CrearDocumentoForm = () => {
                                                     <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" name="imp_nv" checked={impresionPermisoTipo === 'cargos'} onChange={() => setImpresionPermisoTipo('cargos')} className="text-blue-600" /> Por Cargos</label>
                                                     <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" name="imp_nv" checked={impresionPermisoTipo === 'grupos'} onChange={() => setImpresionPermisoTipo('grupos')} className="text-blue-600" /> Por Grupos</label>
                                                 </div>
-                                                <DualListbox options={grupos} selectedOptions={formData.impresion} onChange={(val) => updateListState('impresion', val)} />
+                                                <DualListbox options={getOptions(impresionPermisoTipo)} selectedOptions={formData.impresion} onChange={(val) => updateListState('impresion', val)} />
                                             </div>
                                         </div>
                                     </div>
@@ -337,24 +359,21 @@ export const CrearDocumentoForm = () => {
                                     </div>
 
                                     <div className="pt-6 border-t border-slate-200 space-y-6">
-                                        <DualListbox title="Elabora(n) - Cargos" options={cargos} selectedOptions={formData.elabora} onChange={v => setFormData({...formData, elabora: v})} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={elaboraTipo === 'usuarios'} onChange={() => setElaboraTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={elaboraTipo === 'cargos'} onChange={() => setElaboraTipo('cargos')} className="text-blue-600" /> Por Cargos</label></div>} />
-                                        <DualListbox title="Revisa(n) - Cargos" options={cargos} selectedOptions={formData.revisa} onChange={v => setFormData({...formData, revisa: v})} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={revisaTipo === 'usuarios'} onChange={() => setRevisaTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={revisaTipo === 'cargos'} onChange={() => setRevisaTipo('cargos')} className="text-blue-600" /> Por Cargos</label></div>} />
-                                        <DualListbox title="Aprueba(n) - Cargos" options={cargos} selectedOptions={formData.aprueba} onChange={v => setFormData({...formData, aprueba: v})} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={apruebaTipo === 'usuarios'} onChange={() => setApruebaTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={apruebaTipo === 'cargos'} onChange={() => setApruebaTipo('cargos')} className="text-blue-600" /> Por Cargos</label></div>} />
+                                        <DualListbox title={`Elabora(n) - ${elaboraTipo === 'usuarios' ? 'Usuarios' : 'Cargos'}`} options={getOptions(elaboraTipo)} selectedOptions={formData.elabora} onChange={v => setFormData({...formData, elabora: v})} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={elaboraTipo === 'usuarios'} onChange={() => setElaboraTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={elaboraTipo === 'cargos'} onChange={() => setElaboraTipo('cargos')} className="text-blue-600" /> Por Cargos</label></div>} />
+                                        <DualListbox title={`Revisa(n) - ${revisaTipo === 'usuarios' ? 'Usuarios' : 'Cargos'}`} options={getOptions(revisaTipo)} selectedOptions={formData.revisa} onChange={v => setFormData({...formData, revisa: v})} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={revisaTipo === 'usuarios'} onChange={() => setRevisaTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={revisaTipo === 'cargos'} onChange={() => setRevisaTipo('cargos')} className="text-blue-600" /> Por Cargos</label></div>} />
+                                        <DualListbox title={`Aprueba(n) - ${apruebaTipo === 'usuarios' ? 'Usuarios' : 'Cargos'}`} options={getOptions(apruebaTipo)} selectedOptions={formData.aprueba} onChange={v => setFormData({...formData, aprueba: v})} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={apruebaTipo === 'usuarios'} onChange={() => setApruebaTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={apruebaTipo === 'cargos'} onChange={() => setApruebaTipo('cargos')} className="text-blue-600" /> Por Cargos</label></div>} />
                                     </div>
 
                                     <div className="pt-6 border-t border-slate-200 space-y-8">
                                         <div>
-                                            <DualListbox title="Visualización" options={grupos} selectedOptions={formData.visualizacion} onChange={(val) => updateListState('visualizacion', val)} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={visualizacionPermisoTipo === 'usuarios'} onChange={() => setVisualizacionPermisoTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={visualizacionPermisoTipo === 'cargos'} onChange={() => setVisualizacionPermisoTipo('cargos')} className="text-blue-600" /> Por Cargos</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={visualizacionPermisoTipo === 'grupos'} onChange={() => setVisualizacionPermisoTipo('grupos')} className="text-blue-600" /> Por Grupos</label></div>} />
+                                            <DualListbox title="Visualización" options={getOptions(visualizacionPermisoTipo)} selectedOptions={formData.visualizacion} onChange={(val) => updateListState('visualizacion', val)} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={visualizacionPermisoTipo === 'usuarios'} onChange={() => setVisualizacionPermisoTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={visualizacionPermisoTipo === 'cargos'} onChange={() => setVisualizacionPermisoTipo('cargos')} className="text-blue-600" /> Por Cargos</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={visualizacionPermisoTipo === 'grupos'} onChange={() => setVisualizacionPermisoTipo('grupos')} className="text-blue-600" /> Por Grupos</label></div>} />
                                             <label className="flex items-start gap-2 text-xs text-slate-600 cursor-pointer mt-2"><input type="checkbox" className="mt-0.5 rounded text-blue-600 focus:ring-blue-500" /> Indicar obligatoriedad de lectura y aceptación</label>
                                         </div>
                                         <div className="space-y-6">
                                             <h3 className="text-sm font-bold text-slate-700">Impresión y Descarga</h3>
-                                            <div className="flex gap-4 mb-2">
-                                                <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={impresionPermisoTipo === 'usuarios'} onChange={() => setImpresionPermisoTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={impresionPermisoTipo === 'cargos'} onChange={() => setImpresionPermisoTipo('cargos')} className="text-blue-600" /> Por Cargos</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={impresionPermisoTipo === 'grupos'} onChange={() => setImpresionPermisoTipo('grupos')} className="text-blue-600" /> Por Grupos</label>
-                                            </div>
-                                            <DualListbox title="Impresión" options={grupos} selectedOptions={formData.impresion} onChange={(val) => updateListState('impresion', val)} />
-                                            <DualListbox title="Descargar archivo original" options={grupos} selectedOptions={formData.descargaOriginal} onChange={(val) => updateListState('descargaOriginal', val)} />
-                                            <DualListbox title="Descargar archivo PDF" options={grupos} selectedOptions={formData.descargaPdf} onChange={(val) => updateListState('descargaPdf', val)} />
+                                            <DualListbox title="Impresión" options={getOptions(impresionPermisoTipo)} selectedOptions={formData.impresion} onChange={(val) => updateListState('impresion', val)} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={impresionPermisoTipo === 'usuarios'} onChange={() => setImpresionPermisoTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={impresionPermisoTipo === 'cargos'} onChange={() => setImpresionPermisoTipo('cargos')} className="text-blue-600" /> Por Cargos</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={impresionPermisoTipo === 'grupos'} onChange={() => setImpresionPermisoTipo('grupos')} className="text-blue-600" /> Por Grupos</label></div>} />
+                                            <DualListbox title="Descargar archivo original" options={getOptions(descargaOriginalTipo)} selectedOptions={formData.descargaOriginal} onChange={(val) => updateListState('descargaOriginal', val)} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={descargaOriginalTipo === 'usuarios'} onChange={() => setDescargaOriginalTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={descargaOriginalTipo === 'cargos'} onChange={() => setDescargaOriginalTipo('cargos')} className="text-blue-600" /> Por Cargos</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={descargaOriginalTipo === 'grupos'} onChange={() => setDescargaOriginalTipo('grupos')} className="text-blue-600" /> Por Grupos</label></div>} />
+                                            <DualListbox title="Descargar archivo PDF" options={getOptions(descargaPdfTipo)} selectedOptions={formData.descargaPdf} onChange={(val) => updateListState('descargaPdf', val)} extraRadioSection={<div className="flex gap-4 mb-2"><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={descargaPdfTipo === 'usuarios'} onChange={() => setDescargaPdfTipo('usuarios')} className="text-blue-600" /> Por Usuarios</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={descargaPdfTipo === 'cargos'} onChange={() => setDescargaPdfTipo('cargos')} className="text-blue-600" /> Por Cargos</label><label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer"><input type="radio" checked={descargaPdfTipo === 'grupos'} onChange={() => setDescargaPdfTipo('grupos')} className="text-blue-600" /> Por Grupos</label></div>} />
                                         </div>
                                     </div>
                                     <div className="pt-6 border-t border-slate-200 flex justify-end gap-3">
