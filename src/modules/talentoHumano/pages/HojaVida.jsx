@@ -6,6 +6,7 @@ import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
 import { useAuth } from '../../../providers/AuthProvider';
 import { cursosService } from '../services/cursos.service';
+import { API_BASE_URL } from '../../../config/api';
 
 export const HojaVida = () => {
     const navigate = useNavigate();
@@ -56,8 +57,8 @@ export const HojaVida = () => {
     const [catalogoCursos, setCatalogoCursos] = useState([]);
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [showCatalogModal, setShowCatalogModal] = useState(false);
-    const [nuevoCursoMaestro, setNuevoCursoMaestro] = useState({ nombre: '', descripcion: '', lugarRealizacion: '' });
-    const [datosAsignacion, setDatosAsignacion] = useState({ cursoMaestroId: '', fechaLimite: '' });
+    const [nuevoCursoMaestro, setNuevoCursoMaestro] = useState({ nombre: '', descripcion: '', fechaLimiteGlobal: '', esGlobal: true, mesesVigencia: 12 });
+    const [datosAsignacion, setDatosAsignacion] = useState({ cursoMaestroId: '' });
 
     const [expandedCategories, setExpandedCategories] = useState({});
     const [draggingCategory, setDraggingCategory] = useState(null);
@@ -95,12 +96,12 @@ export const HojaVida = () => {
     const cargarCargosSedes = useCallback(async () => {
         try {
             const token = localStorage.getItem('token');
-            const resCargos = await axios.get('http://localhost:8080/api/v1/cargos', { 
+            const resCargos = await axios.get(`${API_BASE_URL}/api/v1/cargos`, { 
                 headers: { Authorization: `Bearer ${token}` } 
             });
             setCatalogoCargos(resCargos.data || []);
             const resSedes = await http.get('/sedes');
-            setCatalogoSedes(resSedes.data || []);
+            setCatalogoSedes(Array.isArray(resSedes) ? resSedes : (resSedes?.data || []));
         } catch (e) {}
     }, []);
 
@@ -118,12 +119,13 @@ export const HojaVida = () => {
     }, [isStandardUser, userCedula]);
 
     const cargarCursosAsignados = useCallback(async () => {
-        if (!hojaVidaId) return;
+        const uid = datosCV.usuarioId;
+        if (!uid) return;
         try {
-            const res = await cursosService.listarAsignados(hojaVidaId);
-            setCursosAsignados(res.data || res || []);
+            const res = await cursosService.listarAsignados(uid);
+            setCursosAsignados(Array.isArray(res) ? res : []);
         } catch (error) {}
-    }, [hojaVidaId]);
+    }, [datosCV.usuarioId]);
 
     const cargarCatalogoCursos = useCallback(async () => {
         try {
@@ -133,10 +135,10 @@ export const HojaVida = () => {
     }, []);
 
     useEffect(() => {
-        if (activeTab === 'cursos' && hojaVidaId) {
+        if (activeTab === 'cursos' && datosCV.usuarioId) {
             cargarCursosAsignados();
         }
-    }, [activeTab, hojaVidaId, cargarCursosAsignados]);
+    }, [activeTab, datosCV.usuarioId, cargarCursosAsignados]);
 
     const fetchHojaVida = async (cedula) => {
         const cedulaTrim = cedula.trim();
@@ -179,7 +181,7 @@ export const HojaVida = () => {
                 } else {
                     try {
                         const token = localStorage.getItem('token');
-                        const rawUsers = await axios.get('http://localhost:8080/api/v1/usuarios', { headers: { Authorization: `Bearer ${token}` } });
+                        const rawUsers = await axios.get(`${API_BASE_URL}/api/v1/usuarios`, { headers: { Authorization: `Bearer ${token}` } });
                         const allUsers = rawUsers.data?.content || rawUsers.data?.data || rawUsers.data || [];
                         const foundUser = Array.isArray(allUsers) ? allUsers.find(u => 
                             String(u?.persona?.numeroDocumento) === String(cedulaTrim) || 
@@ -208,7 +210,7 @@ export const HojaVida = () => {
                     cargoId: freshCargoId, salario: hv.salario || '', subsidioTransporte: hv.subsidioTransporte || '',
                     estado: hv.estado || '', fechaRetiro: hv.fechaRetiro || '', motivoRetiro: hv.motivoRetiro || '', usuarioId: hv.usuarioId || '', 
                     perfilVacunacion: freshPerfil, detalleVacunas: parsedVacunas,
-                    fotoUrl: hv.fotoUrl ? `http://localhost:8080${hv.fotoUrl}?t=${Date.now()}` : ''
+                    fotoUrl: hv.fotoUrl ? `${API_BASE_URL}${hv.fotoUrl}?t=${Date.now()}` : ''
                 });
 
                 try {
@@ -234,7 +236,7 @@ export const HojaVida = () => {
             if (!isStandardUser) {
                 try {
                     const token = localStorage.getItem('token');
-                    const rawUsers = await axios.get('http://localhost:8080/api/v1/usuarios', { headers: { Authorization: `Bearer ${token}` } });
+                    const rawUsers = await axios.get(`${API_BASE_URL}/api/v1/usuarios`, { headers: { Authorization: `Bearer ${token}` } });
                     const allUsers = rawUsers.data?.content || rawUsers.data?.data || rawUsers.data || [];
                     const foundUser = Array.isArray(allUsers) ? allUsers.find(u => 
                         String(u?.persona?.numeroDocumento) === String(cedulaTrim) || 
@@ -445,7 +447,7 @@ export const HojaVida = () => {
             const formData = new FormData();
             formData.append('foto', archivo);
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:8080/api/v1/hojas-vida/${hojaVidaId}/foto`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/hojas-vida/${hojaVidaId}/foto`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData
@@ -458,7 +460,7 @@ export const HojaVida = () => {
             // El backend devuelve HojaVidaResponseDTO directamente (sin wrapper .data)
             const nuevaFotoUrl = data?.fotoUrl || data?.data?.fotoUrl || '';
             // Añadir timestamp para evitar caché del browser
-            const urlConCache = nuevaFotoUrl ? `http://localhost:8080${nuevaFotoUrl}?t=${Date.now()}` : previewUrl;
+            const urlConCache = nuevaFotoUrl ? `${API_BASE_URL}${nuevaFotoUrl}?t=${Date.now()}` : previewUrl;
             URL.revokeObjectURL(previewUrl);
             setDatosCV(prev => ({ ...prev, fotoUrl: urlConCache, _fotoEsPreview: false }));
             showAlert({ message: 'Foto actualizada correctamente', status: 'success' });
@@ -474,7 +476,7 @@ export const HojaVida = () => {
     const verDocumento = async (soporteId, nombreArchivo) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:8080/api/v1/soportes/${soporteId}/ver`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/soportes/${soporteId}/ver`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('No se pudo obtener el archivo');
@@ -490,7 +492,7 @@ export const HojaVida = () => {
     const handleDescargarDocumento = async (soporteId, nombreArchivo) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:8080/api/v1/soportes/${soporteId}/ver`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/soportes/${soporteId}/ver`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('No se pudo descargar el archivo');
@@ -514,7 +516,7 @@ export const HojaVida = () => {
         try {
             await cursosService.crearCursoCatalogo(nuevoCursoMaestro);
             showAlert({ message: "Curso añadido al catálogo", status: "success" });
-            setNuevoCursoMaestro({ nombre: '', descripcion: '', lugarRealizacion: '' });
+            setNuevoCursoMaestro({ nombre: '', descripcion: '', fechaLimiteGlobal: '', esGlobal: true, mesesVigencia: 12 });
             cargarCatalogoCursos();
         } catch (error) {}
     };
@@ -522,7 +524,10 @@ export const HojaVida = () => {
     const handleAsignarCurso = async (e) => {
         e.preventDefault();
         try {
-            await cursosService.asignarCurso({ hojaVidaId: hojaVidaId, cursoMaestroId: datosAsignacion.cursoMaestroId, fechaLimite: datosAsignacion.fechaLimite });
+            await cursosService.asignarCurso({ 
+                usuarioId: datosCV.usuarioId, 
+                cursoMaestroId: datosAsignacion.cursoMaestroId 
+            });
             showAlert({ message: "Curso asignado", status: "success" });
             setShowAssignModal(false);
             cargarCursosAsignados();
@@ -541,14 +546,14 @@ export const HojaVida = () => {
     const handleSubirCertificadoCurso = async (cursoAsignadoId, e) => {
         const file = e.target.files[0];
         if (!file) return;
-        const formData = new FormData();
-        formData.append('archivo', file);
-        formData.append('datos', new Blob([JSON.stringify({ tipoDocumento: 'Certificado de Formación', cursoAsignadoId: cursoAsignadoId })], { type: 'application/json' }));
         try {
-            await http.post('/soportes/curso', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-            showAlert({ message: 'Certificado entregado', status: 'success' });
+            await cursosService.subirCertificado(cursoAsignadoId, file);
+            showAlert({ message: 'Certificado cargado correctamente', status: 'success' });
             cargarCursosAsignados();
-        } catch (error) {}
+        } catch (error) {
+            const msg = error.response?.data || 'Error al subir el certificado';
+            showAlert({ message: typeof msg === 'string' ? msg : 'Error al subir el certificado', status: 'error' });
+        }
     };
 
     const handleToggleVacuna = (vacunaBackend) => {
@@ -651,7 +656,7 @@ export const HojaVida = () => {
                                             <div className="w-24 h-24 rounded-full border-2 border-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center shadow-sm">
                                                 {datosCV.fotoUrl ? (
                                                     <img
-                                                        src={datosCV.fotoUrl?.startsWith('blob:') || datosCV.fotoUrl?.startsWith('http') ? datosCV.fotoUrl : `http://localhost:8080${datosCV.fotoUrl}`}
+                                                        src={datosCV.fotoUrl?.startsWith('blob:') || datosCV.fotoUrl?.startsWith('http') ? datosCV.fotoUrl : `${API_BASE_URL}${datosCV.fotoUrl}`}
                                                         alt="Foto de perfil"
                                                         className="w-full h-full object-cover"
                                                         onError={(e) => { e.target.style.display = 'none'; }}
@@ -879,15 +884,28 @@ export const HojaVida = () => {
                                             cursosAsignados.map((asignacion) => (
                                                 <div key={asignacion.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col md:flex-row justify-between gap-6">
                                                     <div className="flex-1 space-y-2">
-                                                        <div className="flex flex-wrap items-center gap-2 md:gap-3"><h4 className="text-sm font-bold text-gray-800">{asignacion.cursoMaestro.nombre}</h4><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${asignacion.estado === 'ENTREGADO' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{asignacion.estado}</span></div>
-                                                        <p className="text-xs text-gray-600">{asignacion.cursoMaestro.descripcion}</p>
-                                                        <div className="flex flex-wrap gap-2 md:gap-3 pt-2"><div className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-100 whitespace-nowrap"><MapPin size={12} className="text-gray-400" /> {asignacion.cursoMaestro.lugarRealizacion}</div><div className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-100 whitespace-nowrap"><Clock size={12} className="text-gray-400" /> Límite: {asignacion.fechaLimite}</div></div>
+                                                        <div className="flex flex-wrap items-center gap-2 md:gap-3"><h4 className="text-sm font-bold text-gray-800">{asignacion.cursoNombre}</h4><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${asignacion.estado === 'ENTREGADO' || asignacion.estado === 'COMPLETADO' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{asignacion.estado}</span></div>
+                                                        <p className="text-xs text-gray-600">{asignacion.descripcion}</p>
+                                                        <div className="flex flex-wrap gap-2 md:gap-3 pt-2"><div className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-100 whitespace-nowrap"><Clock size={12} className="text-gray-400" /> Límite de carga: {asignacion.fechaLimite || 'Sin límite'}</div>{asignacion.fechaExpiracion && <div className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-100 whitespace-nowrap"><MapPin size={12} className="text-gray-400" /> Vence: {asignacion.fechaExpiracion}</div>}</div>
                                                     </div>
                                                     <div className="w-full md:w-48 flex flex-col justify-center border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-4">
-                                                        {asignacion.estado === 'ENTREGADO' || asignacion.certificado ? (
-                                                            <div className="bg-green-50 text-green-700 rounded p-3 text-center border border-green-200 w-full"><CheckCircle size={20} className="mx-auto mb-1" /><p className="text-xs font-bold">Certificado Entregado</p></div>
+                                                        {asignacion.estado === 'ENTREGADO' || asignacion.estado === 'COMPLETADO' || asignacion.certificadoUrl ? (
+                                                            <div className="space-y-2 w-full">
+                                                                <div className="bg-green-50 text-green-700 rounded p-3 text-center border border-green-200 w-full"><CheckCircle size={20} className="mx-auto mb-1" /><p className="text-xs font-bold">Certificado Entregado</p></div>
+                                                                {asignacion.certificadoUrl && (
+                                                                    <button type="button" onClick={() => window.open(`${API_BASE_URL}${asignacion.certificadoUrl}`, '_blank')} className="w-full py-2 bg-blue-50 text-blue-700 text-xs font-bold rounded border border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-1 transition-colors"><Eye size={14} /> Ver Certificado</button>
+                                                                )}
+                                                                {isAdminOrHR && (asignacion.esGlobal ? <span className="block text-center text-[10px] text-gray-400 font-medium py-1">Curso Global Institucional</span> : <button type="button" onClick={() => handleEliminarAsignacion(asignacion.id)} className="w-full py-2 md:py-1.5 text-xs font-bold text-red-500 hover:bg-red-50 rounded">Retirar Asignación</button>)}
+                                                            </div>
                                                         ) : (
-                                                            <div className="space-y-2 w-full"><label className="cursor-pointer flex justify-center items-center gap-2 w-full py-2.5 md:py-2 bg-blue-50 text-blue-700 rounded font-bold text-xs border border-blue-200 hover:bg-blue-100 transition-colors"><Upload size={14} /> Subir Certificado <input type="file" accept="application/pdf" className="hidden" onChange={(e) => handleSubirCertificadoCurso(asignacion.id, e)} /></label>{isAdminOrHR && <button type="button" onClick={() => handleEliminarAsignacion(asignacion.id)} className="w-full py-2 md:py-1.5 text-xs font-bold text-red-500 hover:bg-red-50 rounded">Retirar Asignación</button>}</div>
+                                                            <div className="space-y-2 w-full">
+                                                                {!asignacion.permiteCarga ? (
+                                                                    <div className="bg-red-50 text-red-700 rounded p-3 text-center border border-red-200 w-full"><AlertCircle size={20} className="mx-auto mb-1" /><p className="text-xs font-bold">Plazo Vencido</p></div>
+                                                                ) : (
+                                                                    <label className="cursor-pointer flex justify-center items-center gap-2 w-full py-2.5 md:py-2 bg-blue-50 text-blue-700 rounded font-bold text-xs border border-blue-200 hover:bg-blue-100 transition-colors"><Upload size={14} /> Subir Certificado <input type="file" accept="application/pdf" className="hidden" onChange={(e) => handleSubirCertificadoCurso(asignacion.id, e)} /></label>
+                                                                )}
+                                                                {isAdminOrHR && (asignacion.esGlobal ? <span className="block text-center text-[10px] text-gray-400 font-medium py-1">Curso Global Institucional</span> : <button type="button" onClick={() => handleEliminarAsignacion(asignacion.id)} className="w-full py-2 md:py-1.5 text-xs font-bold text-red-500 hover:bg-red-50 rounded">Retirar Asignación</button>)}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -929,7 +947,7 @@ export const HojaVida = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-xl w-[95%] sm:max-w-md overflow-hidden">
                         <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50"><h3 className="font-bold text-gray-800 text-sm">Asignar Curso</h3><button type="button" onClick={() => setShowAssignModal(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button></div>
-                        <form onSubmit={handleAsignarCurso} className="p-4 md:p-6 space-y-4"><div><label className={labelClass}>Curso</label><select required className={inputClass} value={datosAsignacion.cursoMaestroId} onChange={e => setDatosAsignacion({...datosAsignacion, cursoMaestroId: e.target.value})}><option value="">Seleccione...</option>{catalogoCursos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select></div><div><label className={labelClass}>Fecha Límite</label><input required type="date" className={inputClass} value={datosAsignacion.fechaLimite} onChange={e => setDatosAsignacion({...datosAsignacion, fechaLimite: e.target.value})} /></div><button type="submit" className="w-full py-2.5 bg-blue-600 text-white rounded font-bold mt-4 text-sm hover:bg-blue-700">Asignar</button></form>
+                        <form onSubmit={handleAsignarCurso} className="p-4 md:p-6 space-y-4"><div><label className={labelClass}>Curso</label><select required className={inputClass} value={datosAsignacion.cursoMaestroId} onChange={e => setDatosAsignacion({...datosAsignacion, cursoMaestroId: e.target.value})}><option value="">Seleccione...</option>{catalogoCursos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select></div><button type="submit" className="w-full py-2.5 bg-blue-600 text-white rounded font-bold mt-4 text-sm hover:bg-blue-700">Asignar</button></form>
                     </div>
                 </div>
             )}
@@ -938,8 +956,8 @@ export const HojaVida = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-xl w-[95%] sm:w-full sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
                         <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50"><h3 className="font-bold text-gray-800 text-sm">Catálogo Maestro</h3><button type="button" onClick={() => setShowCatalogModal(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button></div>
-                        <div className="p-4 md:p-6 border-b border-gray-100 bg-white"><form onSubmit={handleCrearCursoCatalogo} className="space-y-4"><div><input required type="text" placeholder="Nombre del curso" className={inputClass} value={nuevoCursoMaestro.nombre} onChange={e => setNuevoCursoMaestro({...nuevoCursoMaestro, nombre: e.target.value})} /></div><div><textarea required rows={2} placeholder="Descripción..." className={inputClass} value={nuevoCursoMaestro.descripcion} onChange={e => setNuevoCursoMaestro({...nuevoCursoMaestro, descripcion: e.target.value})} /></div><div><input required type="text" placeholder="Lugar o Entidad" className={inputClass} value={nuevoCursoMaestro.lugarRealizacion} onChange={e => setNuevoCursoMaestro({...nuevoCursoMaestro, lugarRealizacion: e.target.value})} /></div><button type="submit" className="w-full sm:w-auto px-6 py-2 bg-gray-800 text-white rounded font-bold text-xs hover:bg-gray-900">Añadir al Catálogo</button></form></div>
-                        <div className="p-4 md:p-6 overflow-y-auto bg-gray-50 flex-1"><div className="space-y-3">{catalogoCursos.map(c => (<div key={c.id} className="p-4 bg-white border border-gray-200 rounded shadow-sm"><h5 className="font-bold text-gray-800 text-sm">{c.nombre}</h5><p className="text-xs text-gray-500 mt-1">{c.lugarRealizacion}</p></div>))}</div></div>
+                        <div className="p-4 md:p-6 border-b border-gray-100 bg-white"><form onSubmit={handleCrearCursoCatalogo} className="space-y-3"><div><input required type="text" placeholder="Nombre del curso" className={inputClass} value={nuevoCursoMaestro.nombre} onChange={e => setNuevoCursoMaestro({...nuevoCursoMaestro, nombre: e.target.value})} /></div><div><textarea required rows={2} placeholder="Descripción..." className={inputClass} value={nuevoCursoMaestro.descripcion} onChange={e => setNuevoCursoMaestro({...nuevoCursoMaestro, descripcion: e.target.value})} /></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-2"><div><label className={labelClass}>Límite Global</label><input required type="date" className={inputClass} value={nuevoCursoMaestro.fechaLimiteGlobal} onChange={e => setNuevoCursoMaestro({...nuevoCursoMaestro, fechaLimiteGlobal: e.target.value})} /></div><div><label className={labelClass}>Vigencia (Meses)</label><input required type="number" min="1" className={inputClass} value={nuevoCursoMaestro.mesesVigencia} onChange={e => setNuevoCursoMaestro({...nuevoCursoMaestro, mesesVigencia: parseInt(e.target.value) || 12})} /></div><div className="flex items-center pt-5"><label className="flex items-center gap-2 cursor-pointer select-none"><input type="checkbox" checked={nuevoCursoMaestro.esGlobal} onChange={e => setNuevoCursoMaestro({...nuevoCursoMaestro, esGlobal: e.target.checked})} className="w-4 h-4 text-blue-600 rounded" /><span className="text-xs font-bold text-gray-700">Global</span></label></div></div><button type="submit" className="w-full sm:w-auto px-6 py-2 bg-gray-800 text-white rounded font-bold text-xs hover:bg-gray-900">Añadir al Catálogo</button></form></div>
+                        <div className="p-4 md:p-6 overflow-y-auto bg-gray-50 flex-1"><div className="space-y-3">{catalogoCursos.map(c => (<div key={c.id} className="p-4 bg-white border border-gray-200 rounded shadow-sm"><h5 className="font-bold text-gray-800 text-sm">{c.nombre}</h5><p className="text-xs text-gray-500 mt-1">Límite: {c.fechaLimiteGlobal || 'Sin Límite'}</p></div>))}</div></div>
                     </div>
                 </div>
             )}

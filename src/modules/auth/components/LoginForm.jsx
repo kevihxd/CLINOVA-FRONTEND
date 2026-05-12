@@ -49,7 +49,7 @@ export const LoginForm = ({ onForgotPassword }) => {
         <div className="w-full flex flex-col h-full justify-center">
             <div className="mb-8">
                 <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Iniciar sesión</h2>
-                <p className="text-slate-500 text-sm mt-1.5 font-medium">Ingrese sus credenciales corporativas</p>
+                <p className="text-slate-500 text-sm mt-1.5 font-medium">Ingrese sus credenciales</p>
             </div>
 
             <form className="space-y-5" onSubmit={handleLogin}>
@@ -68,7 +68,7 @@ export const LoginForm = ({ onForgotPassword }) => {
                             onChange={handleChange}
                             disabled={isLoading}
                             className="block w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#1a559e] focus:ring-4 focus:ring-[#1a559e]/10 outline-none transition-all disabled:opacity-60"
-                            placeholder="usuario.empresa"
+                            placeholder="usuario"
                             required
                         />
                     </div>

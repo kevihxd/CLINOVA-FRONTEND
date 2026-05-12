@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Save, Users, CheckSquare, Square, Plus, X, Edit } from 'lucide-react';
+import { API_BASE_URL } from '../../../config/api';
 
 export const GestionCargos = () => {
     const [cargos, setCargos] = useState([]);
@@ -29,8 +30,8 @@ export const GestionCargos = () => {
     const cargarDatos = async () => {
         try {
             const [cargosRes, permisosRes] = await Promise.all([
-                fetch('http://localhost:8080/api/v1/cargos', { headers: getAuthHeaders() }),
-                fetch('http://localhost:8080/api/v1/cargos/permisos', { headers: getAuthHeaders() })
+                fetch(`${API_BASE_URL}/api/v1/cargos`, { headers: getAuthHeaders() }),
+                fetch(`${API_BASE_URL}/api/v1/cargos/permisos`, { headers: getAuthHeaders() })
             ]);
             
             if (cargosRes.ok && permisosRes.ok) {
@@ -47,7 +48,7 @@ export const GestionCargos = () => {
         if (!nuevoCargoNombre.trim()) return;
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:8080/api/v1/cargos', {
+            const response = await fetch(`${API_BASE_URL}/api/v1/cargos`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({ nombre: nuevoCargoNombre.trim() })
@@ -72,7 +73,7 @@ export const GestionCargos = () => {
         if (!editCargoNombre.trim()) return;
         setLoading(true);
         try {
-            const response = await fetch(`http://localhost:8080/api/v1/cargos/${cargoSeleccionado.id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/cargos/${cargoSeleccionado.id}`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({ nombre: editCargoNombre.trim() })
@@ -116,7 +117,7 @@ export const GestionCargos = () => {
         if (!cargoSeleccionado) return;
         setLoading(true);
         try {
-            const response = await fetch(`http://localhost:8080/api/v1/cargos/${cargoSeleccionado.id}/permisos`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/cargos/${cargoSeleccionado.id}/permisos`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
                 body: JSON.stringify(permisosAsignados)

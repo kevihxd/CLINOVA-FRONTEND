@@ -119,6 +119,28 @@ const REPORTS_CONFIG = {
             r.valorPago, r.fechaPago, r.numeroComprobantePago
         ],
         filter: (r, term) => r.nombre?.toLowerCase().includes(term) || r.numeroDocumento?.includes(term) || r.estado?.toLowerCase().includes(term)
+    },
+    cursos: {
+        id: 'cursos',
+        title: 'Reporte de Cursos Institucionales',
+        description: 'Estado de asignación y cumplimiento de cursos',
+        endpoint: '/informes/cursos',
+        columns: [
+            { key: 'documento', label: 'Cédula', render: (val) => <span className="font-mono text-gray-600">{val}</span> },
+            { key: 'personal', label: 'Personal', render: (_, row) => <span className="font-semibold text-gray-800">{row.nombres} {row.apellidos}</span> },
+            { key: 'curso', label: 'Curso Asignado', render: (val) => <span className="font-bold text-gray-700">{val}</span> },
+            { key: 'estado', label: 'Estado', center: true, render: (val) => (
+                <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${val === 'ENTREGADO' || val === 'COMPLETADO' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                    {val}
+                </span>
+            )},
+            { key: 'fechaRealizacion', label: 'Fecha Realización', center: true, render: (val) => val || '-' },
+            { key: 'fechaExpiracion', label: 'Vencimiento', center: true, render: (val) => val || '-' },
+            { key: 'certificado', label: 'Certificado', center: true, render: (_, row) => row.certificadoUrl ? <span className="text-green-600 font-bold text-xs">Sí</span> : <span className="text-gray-400 text-xs">No</span> }
+        ],
+        exportHeaders: ['Cédula', 'Nombres', 'Apellidos', 'Curso', 'Estado', 'Fecha Realización', 'Fecha Expiración', 'Certificado'],
+        exportRow: (r) => [r.documento, r.nombres, r.apellidos, r.curso, r.estado, r.fechaRealizacion || 'N/A', r.fechaExpiracion || 'N/A', r.certificadoUrl ? 'Adjunto' : 'Sin certificado'],
+        filter: (r, term) => r.nombres?.toLowerCase().includes(term) || r.apellidos?.toLowerCase().includes(term) || r.documento?.includes(term) || r.curso?.toLowerCase().includes(term)
     }
 };
 
@@ -128,26 +150,56 @@ export const Informes = () => {
     const [data, setData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
+    const [perfilFilter, setPerfilFilter] = useState('TODOS');
+    // Catálogo de vacunas por perfil: { 'Asistencial': ['Vacuna A', ...], 'Administrativo': [...] }
+    const [catalogoVacunas, setCatalogoVacunas] = useState({});
+
+    useEffect(() => {
+        // Cargar el catálogo de vacunas una sola vez
+        http.get('/vacunacion/catalogo').then(res => {
+            const lista = Array.isArray(res) ? res : (res?.data || []);
+            const agrupado = {};
+            lista.forEach(v => {
+                const perfil = v.perfil || 'Sin perfil';
+                if (!agrupado[perfil]) agrupado[perfil] = [];
+                agrupado[perfil].push(v.nombre);
+            });
+            setCatalogoVacunas(agrupado);
+        }).catch(() => {});
+    }, []);
+
+    // Helper: obtiene las vacunas del catálogo del perfil (base) + las que aparecen en los datos reales
+    const getVacunasDePerfil = (rows, perfil) => {
+        // Vacunas del catálogo para este perfil (base garantizada)
+        const catalogoKeys = perfil && perfil !== 'TODOS'
+            ? Object.entries(catalogoVacunas)
+                .filter(([k]) => k.toUpperCase() === perfil.toUpperCase())
+                .flatMap(([, v]) => v)
+            : Object.values(catalogoVacunas).flat();
+
+        // Vacunas que realmente tienen registradas los usuarios
+        const uniqueVaccines = new Set(catalogoKeys);
+        rows.forEach(r => {
+            if (r.detalleVacunas && r.detalleVacunas !== 'Sin registro') {
+                try {
+                    const parsed = JSON.parse(r.detalleVacunas);
+                    if (Array.isArray(parsed)) parsed.forEach(v => { if (v.nombre) uniqueVaccines.add(v.nombre); });
+                } catch(e){}
+            }
+        });
+        return Array.from(uniqueVaccines).sort();
+    };
 
     const activeConfig = useMemo(() => {
         const base = REPORTS_CONFIG[activeReportId];
         if (activeReportId !== 'vacunacion' || data.length === 0) return base;
 
-        const uniqueVaccines = new Set();
-        data.forEach(r => {
-            if (r.detalleVacunas && r.detalleVacunas !== 'Sin registro') {
-                try {
-                    const parsed = JSON.parse(r.detalleVacunas);
-                    if (Array.isArray(parsed)) {
-                        parsed.forEach(v => {
-                            if (v.nombre) uniqueVaccines.add(v.nombre);
-                        });
-                    }
-                } catch(e){}
-            }
-        });
+        // Filtrar el subconjunto de datos para calcular SOLO las vacunas del perfil activo
+        const dataParaColumnas = perfilFilter === 'TODOS'
+            ? data
+            : data.filter(r => (r.perfilVacunacion || '').toUpperCase() === perfilFilter.toUpperCase());
 
-        const vacArray = Array.from(uniqueVaccines).sort();
+        const vacArray = getVacunasDePerfil(dataParaColumnas, perfilFilter);
 
         const newColumns = base.columns.filter(c => c.key !== 'detalleVacunas');
         const semaforoCol = newColumns.pop(); 
@@ -207,7 +259,7 @@ export const Informes = () => {
             exportHeaders: newHeaders,
             exportRow: newExportRow
         };
-    }, [activeReportId, data]);
+    }, [activeReportId, data, perfilFilter, catalogoVacunas]);
 
     useEffect(() => {
         cargarReporte();
@@ -217,6 +269,7 @@ export const Informes = () => {
         setLoading(true);
         setData([]);
         setSearchTerm('');
+        setPerfilFilter('TODOS');
         try {
             const res = await http.get(activeConfig.endpoint);
             const dataDocs = Array.isArray(res) ? res : (res.data?.data || res.data || []);
@@ -226,6 +279,44 @@ export const Informes = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Descarga directo de `data` por perfil — con columnas/vacunas propias de ese perfil (incluyendo catálogo)
+    const handleDownloadVacunacionFiltrado = (perfil) => {
+        const perfilData = data.filter(r => (r.perfilVacunacion || '').toUpperCase() === perfil.toUpperCase());
+
+        if (perfilData.length === 0) {
+            showAlert({ message: `No hay datos para el perfil ${perfil}`, status: 'warning' });
+            return;
+        }
+
+        // Vacunas del catálogo + las registradas (sin mezclar con el otro perfil)
+        const vacArray = getVacunasDePerfil(perfilData, perfil);
+
+        const headers = ['Cédula', 'Nombres', 'Apellidos', 'Perfil Vacunación', ...vacArray, 'Estado Semaforo'];
+
+        const rows = perfilData.map(r => {
+            let parsed = [];
+            try {
+                if (r.detalleVacunas && r.detalleVacunas !== 'Sin registro') parsed = JSON.parse(r.detalleVacunas);
+            } catch(e){}
+
+            const vacVals = vacArray.map(vacName => {
+                const vac = Array.isArray(parsed) ? parsed.find(v => v.nombre === vacName) : null;
+                if (!vac) return '-';
+                let txt = vac.fechas && vac.fechas.length > 0 ? vac.fechas.filter(f=>f).join(', ') : 'Sin dosis';
+                if (vac.requiereRefuerzo && vac.fechaRefuerzo) txt += ` (Ref: ${vac.fechaRefuerzo})`;
+                return txt;
+            });
+
+            return [r.cedula, r.nombres, r.apellidos, r.perfilVacunacion, ...vacVals, getSemaforoStyles(r.estadoSemaforo).label];
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        ws['!cols'] = headers.map((h, i) => ({ wch: Math.max(h.length, ...rows.map(r => String(r[i] || '').length)) }));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `Informe ${perfil}`);
+        XLSX.writeFile(wb, `vacunacion_${perfil.toLowerCase()}_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
     const handleDownloadExcel = () => {
@@ -248,8 +339,14 @@ export const Informes = () => {
 
     const filteredData = useMemo(() => {
         const term = searchTerm.toLowerCase();
-        return data.filter(r => activeConfig.filter(r, term));
-    }, [data, searchTerm, activeConfig]);
+        return data.filter(r => {
+            const matchSearch = activeConfig.filter(r, term);
+            const matchPerfil = activeReportId !== 'vacunacion' || perfilFilter === 'TODOS'
+                ? true
+                : (r.perfilVacunacion || '').toUpperCase() === perfilFilter.toUpperCase();
+            return matchSearch && matchPerfil;
+        });
+    }, [data, searchTerm, activeConfig, perfilFilter, activeReportId]);
 
     return (
         <div className="min-h-screen bg-gray-50 p-6 md:p-8">
@@ -261,7 +358,7 @@ export const Informes = () => {
                         <p className="text-sm text-gray-500 mt-1">Gestión y descarga de reportes consolidados</p>
                     </div>
                     
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <div className="relative">
                             <select 
                                 value={activeReportId}
@@ -275,6 +372,24 @@ export const Informes = () => {
                             <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
 
+                        {activeReportId === 'vacunacion' && (
+                            <div className="flex items-center gap-2 border border-gray-200 rounded-lg p-1 bg-white shadow-sm">
+                                {['TODOS', 'ASISTENCIAL', 'ADMINISTRATIVO'].map(p => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setPerfilFilter(p)}
+                                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                                            perfilFilter === p
+                                                ? 'bg-blue-600 text-white shadow'
+                                                : 'text-gray-500 hover:bg-gray-100'
+                                        }`}
+                                    >
+                                        {p === 'TODOS' ? 'Todos' : p.charAt(0) + p.slice(1).toLowerCase()}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
                         <button 
                             onClick={handleDownloadExcel}
                             disabled={loading || data.length === 0}
@@ -282,6 +397,27 @@ export const Informes = () => {
                         >
                             <Download className="w-4 h-4" /> Exportar Excel
                         </button>
+
+                        {activeReportId === 'vacunacion' && (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => handleDownloadVacunacionFiltrado('ASISTENCIAL')}
+                                    disabled={loading || data.length === 0}
+                                    className="flex items-center gap-1.5 px-3 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
+                                    title="Descarga solo el personal Asistencial (sin importar el filtro activo)"
+                                >
+                                    <Download className="w-3.5 h-3.5" /> Asistencial
+                                </button>
+                                <button
+                                    onClick={() => handleDownloadVacunacionFiltrado('ADMINISTRATIVO')}
+                                    disabled={loading || data.length === 0}
+                                    className="flex items-center gap-1.5 px-3 py-2.5 bg-purple-600 text-white rounded-lg text-xs font-semibold hover:bg-purple-700 transition-colors shadow-sm disabled:opacity-50"
+                                    title="Descarga solo el personal Administrativo (sin importar el filtro activo)"
+                                >
+                                    <Download className="w-3.5 h-3.5" /> Administrativo
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 

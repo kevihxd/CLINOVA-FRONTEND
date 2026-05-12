@@ -4,6 +4,7 @@ import { Organigrama } from '../modules/talentoHumano/pages/Organigrama';
 import { VerDetalleCargo } from '../modules/talentoHumano/pages/VerDetalleCargo';
 import { TipoDocumento } from '../modules/talentoHumano/pages/TipoDocumento'; 
 import { Incapacidades } from '../modules/talentoHumano/pages/Incapacidades';
+import { GestionCursos } from '../modules/talentoHumano/pages/GestionCursos';
 import { MapaProcesos } from '../modules/procesos/pages/MapaProcesos';
 import { TipoDocumentos } from '../modules/procesos/pages/TipoDocumentos'; 
 import { ListadoUnico } from '../modules/procesos/pages/ListadoUnico'; 
@@ -38,6 +39,7 @@ export const ROUTES = {
     VER_DETALLE: { path: '/talentoHumano/perfiles-cargo/:id', title: 'Detalle de Cargo', element: <VerDetalleCargo /> },
     TIPO_DOCUMENTO: { path: '/talentoHumano/tipo-documento', title: 'Tipo de Documento', element: <TipoDocumento /> },
     INCAPACIDADES: { path: '/talentoHumano/incapacidades', title: 'Incapacidades', element: <Incapacidades /> },
+    CURSOS: { path: '/talentoHumano/cursos', title: 'Gestión de Cursos', element: <GestionCursos /> },
   },
   PROCESOS: {
     MAPA_PROCESOS: { path: '/procesos/mapa', title: 'Mapa de Procesos', element: <MapaProcesos /> },

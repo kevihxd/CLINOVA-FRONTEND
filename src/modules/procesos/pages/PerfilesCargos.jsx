@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserCircle, Search, Edit, Save, X, Briefcase } from 'lucide-react';
+import { API_BASE_URL } from '../../../config/api';
 
 export const PerfilesCargos = () => {
     const [cargos, setCargos] = useState([]);
@@ -30,7 +31,7 @@ export const PerfilesCargos = () => {
 
     const fetchCargos = async () => {
         try {
-            const res = await fetch('http://localhost:8080/api/v1/cargos', {
+            const res = await fetch(`${API_BASE_URL}/api/v1/cargos`, {
                 headers: getAuthHeaders()
             });
             if (res.ok) setCargos(await res.json());
@@ -43,7 +44,7 @@ export const PerfilesCargos = () => {
         setSelectedCargo(cargo);
         setIsEditing(false);
         try {
-            const res = await fetch(`http://localhost:8080/api/perfiles-cargo/cargo/${cargo.id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/perfiles-cargo/cargo/${cargo.id}`, {
                 headers: getAuthHeaders()
             });
             if (res.ok) {
@@ -77,7 +78,7 @@ export const PerfilesCargos = () => {
                 cargo: { id: selectedCargo.id },
                 ...perfilForm
             };
-            const res = await fetch('http://localhost:8080/api/perfiles-cargo', {
+            const res = await fetch(`${API_BASE_URL}/api/perfiles-cargo`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify(payload)

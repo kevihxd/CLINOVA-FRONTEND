@@ -1,49 +1,47 @@
-import { Users, FileSpreadsheet } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../../providers/AuthProvider';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, Users, Cross, BookOpen, ChevronRight } from 'lucide-react';
 
 export const TALENTO_HUMANO_OPTIONS = [
-    { title: 'Hoja de Vida', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', page: '/talentoHumano/hoja-de-vida' },
-    { title: 'Incapacidades', icon: FileSpreadsheet, color: 'text-rose-600', bg: 'bg-rose-50', page: '/talentoHumano/incapacidades' },
-    { title: 'Importar Vacunas', icon: FileSpreadsheet, color: 'text-green-600', bg: 'bg-green-50', page: '/talentoHumano/importar-vacunas' }
+    { title: 'Hojas de Vida', icon: FileText, color: 'text-blue-600', bgColor: 'bg-blue-50', path: '/talentoHumano/hoja-de-vida', description: 'Gestión y registro de hojas de vida' },
+    { title: 'Perfiles y Cargos', icon: Users, color: 'text-purple-600', bgColor: 'bg-purple-50', path: '/procesos/perfiles-cargo', description: 'Administración de perfiles y cargos' },
+    { title: 'Incapacidades', icon: Cross, color: 'text-rose-600', bgColor: 'bg-rose-50', path: '/talentoHumano/incapacidades', description: 'Registro y control de incapacidades' },
+    { title: 'Cursos', icon: BookOpen, color: 'text-emerald-600', bgColor: 'bg-emerald-50', path: '/talentoHumano/cursos', description: 'Gestión de cursos institucionales' }
 ];
 
-export const TalentoHumanoOptions = () => {
+export const TalentoHumanoOptions = ({ onClose }) => {
     const navigate = useNavigate();
-    const location = useLocation();
-    const { user } = useAuth();
-
-    const userRole = String(user?.role || user?.rol || user?.roles?.[0] || 'USER').toUpperCase(); 
-    const isAuthorized = userRole === 'ADMIN' || userRole === 'HR_MANAGER';
-
-    const allowedOptions = TALENTO_HUMANO_OPTIONS.filter(opt => {
-        if (opt.title === 'Hoja de Vida') return true;
-        return isAuthorized;
-    });
 
     const handleNavigation = (path) => {
-        if (location.pathname !== path) {
-            navigate(path);
-        }
+        navigate(path);
+        if (onClose) onClose();
     };
 
     return (
-        <div className="grid grid-cols-1 gap-4 p-4">
-            {allowedOptions.map((opt, idx) => (
-                <button
-                    key={idx}
-                    onClick={() => handleNavigation(opt.page)}
-                    className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-100 transition-all group text-left w-full"
-                >
-                    <div className={`p-3 rounded-lg ${opt.bg} ${opt.color} group-hover:scale-110 transition-transform`}>
-                        <opt.icon size={20} />
-                    </div>
-                    <div>
-                        <h4 className="font-semibold text-slate-800">{opt.title}</h4>
-                        <p className="text-xs text-slate-400">Gestionar {opt.title.toLowerCase()}</p>
-                    </div>
-                </button>
-            ))}
+        <div className="flex flex-col gap-3 w-full">
+            {TALENTO_HUMANO_OPTIONS.map((option, index) => {
+                const Icon = option.icon;
+                return (
+                    <button
+                        key={index}
+                        onClick={() => handleNavigation(option.path)}
+                        className="w-full flex items-center p-4 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all group text-left"
+                    >
+                        <div className={`p-3 rounded-lg ${option.bgColor} ${option.color} mr-4 group-hover:scale-110 transition-transform`}>
+                            <Icon size={24} strokeWidth={2} />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors text-base">
+                                {option.title}
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-1">
+                                {option.description}
+                            </p>
+                        </div>
+                        <ChevronRight size={20} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                    </button>
+                );
+            })}
         </div>
     );
 };
