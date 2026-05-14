@@ -1,47 +1,73 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Users, Cross, BookOpen, ChevronRight } from 'lucide-react';
+import { ROUTES } from '../../../router/routes.const';
+import { FileText, Users, HeartPulse, GraduationCap } from 'lucide-react';
+import CanAccess from '../../../components/CanAccess';
 
-export const TALENTO_HUMANO_OPTIONS = [
-    { title: 'Hojas de Vida', icon: FileText, color: 'text-blue-600', bgColor: 'bg-blue-50', path: '/talentoHumano/hoja-de-vida', description: 'Gestión y registro de hojas de vida' },
-    { title: 'Perfiles y Cargos', icon: Users, color: 'text-purple-600', bgColor: 'bg-purple-50', path: '/procesos/perfiles-cargo', description: 'Administración de perfiles y cargos' },
-    { title: 'Incapacidades', icon: Cross, color: 'text-rose-600', bgColor: 'bg-rose-50', path: '/talentoHumano/incapacidades', description: 'Registro y control de incapacidades' },
-    { title: 'Cursos', icon: BookOpen, color: 'text-emerald-600', bgColor: 'bg-emerald-50', path: '/talentoHumano/cursos', description: 'Gestión de cursos institucionales' }
-];
-
-export const TalentoHumanoOptions = ({ onClose }) => {
+const TalentoHumanoOptions = () => {
     const navigate = useNavigate();
 
-    const handleNavigation = (path) => {
-        navigate(path);
-        if (onClose) onClose();
-    };
-
     return (
-        <div className="flex flex-col gap-3 w-full">
-            {TALENTO_HUMANO_OPTIONS.map((option, index) => {
-                const Icon = option.icon;
-                return (
-                    <button
-                        key={index}
-                        onClick={() => handleNavigation(option.path)}
-                        className="w-full flex items-center p-4 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all group text-left"
-                    >
-                        <div className={`p-3 rounded-lg ${option.bgColor} ${option.color} mr-4 group-hover:scale-110 transition-transform`}>
-                            <Icon size={24} strokeWidth={2} />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors text-base">
-                                {option.title}
-                            </h3>
-                            <p className="text-xs text-slate-500 mt-1">
-                                {option.description}
-                            </p>
-                        </div>
-                        <ChevronRight size={20} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
-                    </button>
-                );
-            })}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
+            
+            {/* Opción visible para TODOS los usuarios (incluyendo su propia hoja de vida) */}
+            <div 
+                onClick={() => navigate(ROUTES.TALENTO_HUMANO.HOJA_VIDA)}
+                className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow flex flex-col items-center justify-center text-center gap-3"
+            >
+                <div className="p-3 bg-blue-50 rounded-full text-blue-600">
+                    <FileText size={32} />
+                </div>
+                <div>
+                    <h3 className="font-bold text-gray-800">Hoja de Vida</h3>
+                    <p className="text-xs text-gray-500 mt-1">Gestión de tu información personal y profesional</p>
+                </div>
+            </div>
+
+            {/* Opciones Restringidas (Solo roles administrativos) */}
+            <CanAccess requiredRole={['ADMIN', 'TALENTO_HUMANO']}>
+                <div 
+                    onClick={() => navigate(ROUTES.TALENTO_HUMANO.PERFILES_CARGOS)}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow flex flex-col items-center justify-center text-center gap-3"
+                >
+                    <div className="p-3 bg-indigo-50 rounded-full text-indigo-600">
+                        <Users size={32} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-800">Perfiles y Cargos</h3>
+                        <p className="text-xs text-gray-500 mt-1">Administración de perfiles y roles institucionales</p>
+                    </div>
+                </div>
+
+                <div 
+                    onClick={() => navigate(ROUTES.TALENTO_HUMANO.INCAPACIDADES)}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow flex flex-col items-center justify-center text-center gap-3"
+                >
+                    <div className="p-3 bg-red-50 rounded-full text-red-600">
+                        <HeartPulse size={32} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-800">Incapacidades</h3>
+                        <p className="text-xs text-gray-500 mt-1">Registro y control de ausentismos médicos</p>
+                    </div>
+                </div>
+
+                <div 
+                    onClick={() => navigate(ROUTES.TALENTO_HUMANO.CURSOS)}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow flex flex-col items-center justify-center text-center gap-3"
+                >
+                    <div className="p-3 bg-amber-50 rounded-full text-amber-600">
+                        <GraduationCap size={32} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-800">Cursos</h3>
+                        <p className="text-xs text-gray-500 mt-1">Gestión de capacitaciones y certificaciones</p>
+                    </div>
+                </div>
+            </CanAccess>
+
         </div>
     );
 };
+
+export default TalentoHumanoOptions;
