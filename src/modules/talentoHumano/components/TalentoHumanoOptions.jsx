@@ -25,7 +25,7 @@ export const TalentoHumanoOptions = ({ onClose }) => {
             
             {/* Opción visible para TODOS los usuarios */}
             <button
-                onClick={() => handleNavigation(ROUTES.TALENTO_HUMANO.HOJA_VIDA)}
+                onClick={() => handleNavigation(ROUTES.TALENTO_HUMANO.HOJA_VIDA.path)}
                 className="w-full flex items-center p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all group text-left"
             >
                 <div className="p-3 bg-blue-50 rounded-lg text-blue-600 mr-4 group-hover:scale-110 transition-transform">
@@ -45,7 +45,7 @@ export const TalentoHumanoOptions = ({ onClose }) => {
             {isAdminOrHR && (
                 <>
                     <button
-                        onClick={() => handleNavigation(ROUTES.TALENTO_HUMANO.PERFILES_CARGOS)}
+                        onClick={() => handleNavigation(ROUTES.PROCESOS.PERFILES_CARGO.path)}
                         className="w-full flex items-center p-4 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all group text-left"
                     >
                         <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600 mr-4 group-hover:scale-110 transition-transform">
@@ -62,7 +62,7 @@ export const TalentoHumanoOptions = ({ onClose }) => {
                     </button>
 
                     <button
-                        onClick={() => handleNavigation(ROUTES.TALENTO_HUMANO.INCAPACIDADES)}
+                        onClick={() => handleNavigation(ROUTES.TALENTO_HUMANO.INCAPACIDADES.path)}
                         className="w-full flex items-center p-4 bg-white border border-slate-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all group text-left"
                     >
                         <div className="p-3 bg-red-50 rounded-lg text-red-600 mr-4 group-hover:scale-110 transition-transform">
@@ -79,7 +79,7 @@ export const TalentoHumanoOptions = ({ onClose }) => {
                     </button>
 
                     <button
-                        onClick={() => handleNavigation(ROUTES.TALENTO_HUMANO.CURSOS)}
+                        onClick={() => handleNavigation(ROUTES.TALENTO_HUMANO.CURSOS.path)}
                         className="w-full flex items-center p-4 bg-white border border-slate-200 rounded-xl hover:border-amber-300 hover:shadow-md transition-all group text-left"
                     >
                         <div className="p-3 bg-amber-50 rounded-lg text-amber-600 mr-4 group-hover:scale-110 transition-transform">
