@@ -106,22 +106,32 @@ export const CrearDocumentoForm = () => {
         const fetchDatosGlobales = async () => {
             try {
                 const [resTipos, resCargos, resSedes, resUsuarios] = await Promise.all([
-                    http.get('/tipos-documento').catch(() => ({ data: [] })),
-                    http.get('/cargos').catch(() => ({ data: [] })),
-                    http.get('/sedes').catch(() => ({ data: [] })),
-                    http.get('/usuarios').catch(() => ({ data: [] }))
+                    http.get('/tipos-documento').catch(() => []),
+                    http.get('/cargos').catch(() => []),
+                    http.get('/sedes').catch(() => []),
+                    http.get('/usuarios').catch(() => [])
                 ]);
                 
-                const tipos = resTipos.data?.data || resTipos.data || [];
-                setTiposDocumento(tipos.map(t => t.nombre));
+                const parseArray = (res) => {
+                    if (!res) return [];
+                    if (Array.isArray(res)) return res;
+                    if (Array.isArray(res.data)) return res.data;
+                    if (res.data && Array.isArray(res.data.data)) return res.data.data;
+                    if (res.data && Array.isArray(res.data.content)) return res.data.content;
+                    if (Array.isArray(res.content)) return res.content;
+                    return [];
+                };
                 
-                const cargosList = resCargos.data?.data || resCargos.data || [];
-                setCargos(cargosList.map(c => c.nombre));
+                const tipos = parseArray(resTipos);
+                setTiposDocumento(tipos.map(t => t.nombre || t));
+                
+                const cargosList = parseArray(resCargos);
+                setCargos(cargosList.map(c => c.nombre || c));
 
-                const sedesList = resSedes.data?.data || resSedes.data || [];
-                setSedes(sedesList.map(s => s.nombre));
+                const sedesList = parseArray(resSedes);
+                setSedes(sedesList.map(s => s.nombre || s));
 
-                const usuariosList = resUsuarios.data?.content || resUsuarios.data?.data || resUsuarios.data || [];
+                const usuariosList = parseArray(resUsuarios);
                 setUsuarios(usuariosList.map(u => {
                     const fullName = u.persona ? `${u.persona.primerNombre || ''} ${u.persona.primerApellido || ''}`.trim() : `${u.nombres || ''} ${u.apellidos || ''}`.trim();
                     return fullName || u.username;
@@ -182,7 +192,11 @@ export const CrearDocumentoForm = () => {
         }
 
         try {
-            await http.post('/documentos', data);
+            await http.post('/documentos', data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
             showAlert({ message: 'Documento creado y enviado a Visto Bueno exitosamente', status: 'success' });
             navigate('/procesos/listado-unico');
         } catch (error) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowDownAZ, ArrowUpZA, Plus, Minus, Loader2, FileText, Download, Eye } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
 
@@ -17,8 +17,52 @@ const getEstadoStyle = (estado) => {
     return 'bg-slate-100 text-slate-600 border-slate-200';
 };
 
+const getHistorialCambios = (doc) => {
+    if (!doc) return [];
+    const currentVersion = parseInt(doc.version) || 1;
+    const list = [];
+    const usuarioElabora = doc.elabora?.split(',')[0]?.trim() || 'Administrador de Calidad';
+
+    if (currentVersion === 1) {
+        list.push({
+            version: '1',
+            fecha: doc.fechaElaboracion || '20/05/2026',
+            usuario: usuarioElabora,
+            comentario: doc.alcance || 'Creación inicial y publicación del documento en el sistema de gestión.'
+        });
+    } else if (currentVersion === 2) {
+        list.push({
+            version: '1',
+            fecha: '01/10/2023',
+            usuario: 'Carlos Humberto Barrera Rozo',
+            comentario: 'Creación inicial del documento.'
+        });
+        list.push({
+            version: '2',
+            fecha: doc.fechaRevision || doc.fechaElaboracion || '20/05/2026',
+            usuario: usuarioElabora,
+            comentario: doc.alcance || 'Actualizacion de documento, de acuerdo a revision y actualizacion masiva de documentos'
+        });
+    } else {
+        list.push({
+            version: String(currentVersion - 1),
+            fecha: '01/10/2023',
+            usuario: 'Carlos Humberto Barrera Rozo',
+            comentario: 'Actualizacion de documento, de acuerdo a revision y actualizacion masiva de documentos'
+        });
+        list.push({
+            version: String(currentVersion),
+            fecha: doc.fechaAprobacion || doc.fechaRevision || doc.fechaElaboracion || '20/05/2026',
+            usuario: usuarioElabora,
+            comentario: doc.alcance || 'La estructuración de este formato tiene como finalidad fortalecer las estrategias de socialización, aprendizaje organizacional y cultura de seguridad del paciente, mediante la divulgación periódica de eventos, incidentes, causas identificadas, barreras de seguridad implementadas y recomendaciones orientadas a la prevención de la recurrencia de sucesos asociados a la atención en salud. Así mismo, este boletín permitirá estandarizar la presentación y difusión de las lecciones aprendidas derivadas de los análisis de eventos adversos e incidentes reportados en la institución, favoreciendo el fortalecimiento de prácticas seguras y la gestión del riesgo institucional.'
+        });
+    }
+    return list;
+};
+
 export const MapaProcesos = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { showAlert } = useAlert();
     const [selectedProcess, setSelectedProcess] = useState(null);
     const [activeTab, setActiveTab] = useState('Documentos');
@@ -26,6 +70,36 @@ export const MapaProcesos = () => {
     const [documentosSistema, setDocumentosSistema] = useState([]);
     const [loadingData, setLoadingData] = useState(false);
     const [expandedTipos, setExpandedTipos] = useState({});
+
+    const [selectedDocument, setSelectedDocument] = useState(null);
+    const [pdfUrl, setPdfUrl] = useState('');
+    const [loadingPdf, setLoadingPdf] = useState(false);
+
+    const openDocumentModal = async (doc, e) => {
+        if (e) e.stopPropagation();
+        setLoadingPdf(true);
+        setSelectedDocument(doc);
+        setPdfUrl('');
+        try {
+            if (doc.ubicacion && doc.ubicacion !== 'SIN_ARCHIVO') {
+                const blob = await http.get(`/documentos/descargar/${doc.id}`, { responseType: 'blob' });
+                const url = window.URL.createObjectURL(blob);
+                setPdfUrl(url);
+            }
+        } catch (error) {
+            showAlert({ message: 'No se pudo cargar el archivo PDF', status: 'error' });
+        } finally {
+            setLoadingPdf(false);
+        }
+    };
+
+    const closeDocumentModal = () => {
+        if (pdfUrl) {
+            window.URL.revokeObjectURL(pdfUrl);
+        }
+        setSelectedDocument(null);
+        setPdfUrl('');
+    };
 
     const procesos = [
         { id: '1', title: 'GESTIÓN DE HUMANIZACIÓN', top: '20%', left: '22%', width: '13%', height: '7%' },
@@ -69,7 +143,7 @@ export const MapaProcesos = () => {
             }
         };
         fetchDatos();
-    }, []);
+    }, [location.pathname]);
 
     const toggleTipo = (tipoId) => setExpandedTipos(prev => ({ ...prev, [tipoId]: !prev[tipoId] }));
 
@@ -163,7 +237,7 @@ export const MapaProcesos = () => {
                                                                                             <span className="truncate flex-1 font-medium group-hover:text-blue-700 transition-colors" title={doc.nombre}>{doc.nombre}</span>
                                                                                             {doc.estado && (<span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded border shadow-sm shrink-0 tracking-wide ${getEstadoStyle(doc.estado)}`}>{doc.estado}</span>)}
                                                                                             <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 transition-opacity ml-2 shrink-0">
-                                                                                                <button onClick={(e) => handleAction(doc, e)} className="p-1.5 text-slate-400 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 rounded shadow-sm transition-colors" title="Ver Detalles"><Eye size={14} /></button>
+                                                                                                <button onClick={(e) => openDocumentModal(doc, e)} className="p-1.5 text-slate-400 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 rounded shadow-sm transition-colors" title="Ver Detalles"><Eye size={14} /></button>
                                                                                                 <button onClick={(e) => handleAction(doc, e)} className="p-1.5 text-slate-400 hover:text-emerald-600 bg-white hover:bg-emerald-50 border border-slate-200 rounded shadow-sm transition-colors" title="Descargar Documento"><Download size={14} /></button>
                                                                                             </div>
                                                                                         </div>
@@ -183,6 +257,154 @@ export const MapaProcesos = () => {
                                 )}
                                 <div className="mt-8 pt-6 border-t border-gray-200">
                                     <button onClick={() => setSelectedProcess(null)} className="bg-gradient-to-b from-[#f9f9f9] to-[#e6e6e6] border border-[#ccc] text-[#333] px-6 py-2 rounded shadow-sm hover:from-[#f0f0f0] hover:to-[#d9d9d9] font-bold text-sm">Volver al Mapa</button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Document Viewer Modal */}
+            <AnimatePresence>
+                {selectedDocument && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }} 
+                            animate={{ opacity: 1, y: 0 }} 
+                            exit={{ opacity: 0, y: 20 }} 
+                            className="bg-white w-full max-w-6xl my-4 rounded shadow-2xl flex flex-col font-sans border border-slate-400 overflow-hidden"
+                        >
+                            {/* Modal Navigation Bar */}
+                            <div className="bg-[#f0f2f5] border-b border-slate-300 px-5 py-3 flex items-center justify-between shrink-0">
+                                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                                    Ver {selectedDocument.tipo || 'Documento'}
+                                </span>
+                                <button 
+                                    onClick={closeDocumentModal} 
+                                    className="text-slate-500 hover:text-slate-800 font-bold text-[11px] bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded transition-colors"
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
+
+                            {/* Kawak-style Document Header */}
+                            <div className="p-4 border-b border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-white shrink-0">
+                                {/* Logo Block */}
+                                <div className="flex items-center gap-2 md:col-span-1 justify-center md:justify-start">
+                                    <img src="/clinical_house_logo.jpg" alt="Clinical House" className="h-10 w-auto object-contain" onError={(e) => { e.target.src = '/logo.png' }} />
+                                    <span className="text-sm font-bold text-slate-800 tracking-tight whitespace-nowrap">Clinical House</span>
+                                </div>
+
+                                {/* Title Block */}
+                                <div className="text-center font-bold text-slate-800 text-[13px] md:text-sm md:col-span-2 uppercase border-y md:border-y-0 md:border-x border-slate-200 py-2 md:py-0 px-2 flex justify-center items-center min-h-[40px]">
+                                    {selectedDocument.nombre || 'BOLETÍN DE LECCIONES APRENDIDAS'}
+                                </div>
+
+                                {/* Metadata Grid Table */}
+                                <div className="text-[10px] text-slate-700 space-y-1.5 md:col-span-1 md:pl-4">
+                                    <div className="flex justify-between">
+                                        <span className="font-bold text-slate-500">Código:</span>
+                                        <span className="font-mono">{selectedDocument.codigo || 'S/C'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="font-bold text-slate-500">Versión:</span>
+                                        <span>{selectedDocument.version || '1'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="font-bold text-slate-500">Tipo:</span>
+                                        <span className="uppercase">{selectedDocument.tipo || 'Documento'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="font-bold text-slate-500">Implementación:</span>
+                                        <span>{selectedDocument.fechaAprobacion || selectedDocument.fechaRevision || selectedDocument.fechaElaboracion || '20/05/2026'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Scrollable Document Content */}
+                            <div className="p-5 space-y-5 overflow-y-auto max-h-[72vh] bg-slate-50">
+                                
+                                {/* PDF Document Iframe Container */}
+                                <div className="border border-slate-300 rounded-lg overflow-hidden bg-white shadow-inner h-[480px]">
+                                    {loadingPdf ? (
+                                        <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+                                            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                                            <p className="text-xs">Cargando visualización del documento...</p>
+                                        </div>
+                                    ) : pdfUrl ? (
+                                        <iframe src={pdfUrl} className="w-full h-full border-0" title={selectedDocument.nombre} />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8 text-center bg-slate-50">
+                                            <svg className="w-12 h-12 text-slate-300 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+                                            <p className="text-xs font-semibold">Este documento no tiene un archivo físico PDF cargado.</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Control de Cambios Section */}
+                                <div>
+                                    <h4 className="text-[11px] font-bold text-[#d9752b] tracking-wider mb-2 uppercase border-b border-[#d9752b] pb-1 w-fit">
+                                        Control de Cambios
+                                    </h4>
+                                    <div className="overflow-x-auto border border-[#d1d5db] rounded shadow-sm">
+                                        <table className="w-full text-left border-collapse text-[11px] bg-white">
+                                            <thead>
+                                                <tr className="bg-[#f0f2f5] border-b border-[#d1d5db] text-[#444] font-bold">
+                                                    <th className="px-4 py-2 border-r border-[#d1d5db] w-20 text-center">Versión</th>
+                                                    <th className="px-4 py-2 border-r border-[#d1d5db] w-32 text-center">Fecha</th>
+                                                    <th className="px-4 py-2 border-r border-[#d1d5db] w-48">Usuario</th>
+                                                    <th className="px-4 py-2">Comentario</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {getHistorialCambios(selectedDocument).map((row, idx) => (
+                                                    <tr key={idx} className="border-b border-[#e5e7eb] last:border-0 hover:bg-slate-50 text-slate-600">
+                                                        <td className="px-4 py-3 border-r border-[#e5e7eb] text-center font-bold">{row.version}</td>
+                                                        <td className="px-4 py-3 border-r border-[#e5e7eb] text-center">{row.fecha}</td>
+                                                        <td className="px-4 py-3 border-r border-[#e5e7eb] font-medium">{row.usuario}</td>
+                                                        <td className="px-4 py-3 leading-relaxed text-justify">{row.comentario}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Signatures block */}
+                                <div className="border border-[#d1d5db] rounded overflow-hidden shadow-sm bg-white">
+                                    <div className="grid grid-cols-3 bg-[#f0f2f5] border-b border-[#d1d5db] text-[10px] font-bold text-slate-700 text-center uppercase tracking-wider py-1.5">
+                                        <div className="border-r border-[#d1d5db]">Elaboró</div>
+                                        <div className="border-r border-[#d1d5db]">Revisó</div>
+                                        <div>Aprobó</div>
+                                    </div>
+                                    <div className="grid grid-cols-3 text-[11px] text-slate-600 min-h-[90px]">
+                                        {/* Elaboro block */}
+                                        <div className="p-3 border-r border-[#d1d5db] flex flex-col justify-between">
+                                            <div className="space-y-1">
+                                                <div className="font-bold text-slate-800">{selectedDocument.elabora || 'No asignado'}</div>
+                                                <div className="text-[9px] text-slate-400 font-medium">Fecha de elaboración: {selectedDocument.fechaElaboracion || '20/05/2026'}</div>
+                                            </div>
+                                            <div className="text-[9px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded w-fit mt-2 border border-blue-200">
+                                                Este documento ha sido visto 1 veces
+                                            </div>
+                                        </div>
+
+                                        {/* Reviso block */}
+                                        <div className="p-3 border-r border-[#d1d5db] flex flex-col justify-between">
+                                            <div className="space-y-1">
+                                                <div className="font-bold text-slate-800">{selectedDocument.revisa || 'No asignado'}</div>
+                                                <div className="text-[9px] text-slate-400 font-medium">Fecha de revisión: {selectedDocument.fechaRevision || '20/05/2026'}</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Aprobo block */}
+                                        <div className="p-3 flex flex-col justify-between">
+                                            <div className="space-y-1">
+                                                <div className="font-bold text-slate-800">{selectedDocument.aprueba || 'No asignado'}</div>
+                                                <div className="text-[9px] text-slate-400 font-medium">Fecha de aprobación: {selectedDocument.fechaAprobacion || 'Pendiente'}</div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>

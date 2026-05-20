@@ -27,9 +27,6 @@ export const Incapacidades = () => {
         if (!busqueda) return;
         setCargando(true);
         try {
-            // Utilizamos el endpoint que busca incapacidades por documento, o buscamos el usuario primero.
-            // Wait, we need the user's ID to save a new incapacidad.
-            // Is there an endpoint to find a user by document?
             const resUser = await http.get(`/usuarios/documento/${busqueda}`).catch(() => null);
             let user = resUser?.data?.data || resUser?.data || resUser;
             
@@ -71,10 +68,7 @@ export const Incapacidades = () => {
         setCargando(true);
         try {
             const formDataMultipart = new FormData();
-            
-            // Adjuntamos el JSON como un blob tipo application/json
             const dto = { ...formData };
-            // Auto calculate diasOtorgados si están vacíos? El backend ya lo hace.
             formDataMultipart.append('usuarioId', usuarioActual.id);
             formDataMultipart.append('data', new Blob([JSON.stringify(dto)], { type: "application/json" }));
             
@@ -353,8 +347,8 @@ export const Incapacidades = () => {
                                     <h3 className="font-semibold text-indigo-800 border-b pb-2 mb-4 text-sm uppercase">4. Soportes y Observaciones</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="md:col-span-2">
-                                            <label className="block text-xs font-medium text-gray-700 mb-1">Soporte Adjunto (PDF/Imagen)</label>
-                                            <input type="file" onChange={e => setArchivoSoporte(e.target.files[0])} className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm outline-none focus:border-indigo-500" accept=".pdf,image/*" />
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Soporte Adjunto (solo PDF)</label>
+                                            <input type="file" onChange={e => { const f = e.target.files[0]; if (f && f.type !== "application/pdf") { alert("Solo se permiten archivos PDF."); e.target.value = ""; return; } setArchivoSoporte(f); }} className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm outline-none focus:border-indigo-500" accept="application/pdf" />
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className="block text-xs font-medium text-gray-700 mb-1">Observaciones</label>

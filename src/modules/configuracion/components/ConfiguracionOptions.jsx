@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Shield, Map, Briefcase, ChevronRight, Syringe } from 'lucide-react';
+import { Users, Shield, Map, Briefcase, ChevronRight, Syringe, SlidersHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const CONFIGURACION_OPTIONS = [
@@ -11,11 +11,11 @@ export const CONFIGURACION_OPTIONS = [
         description: 'Administración de cuentas y perfiles de acceso'
     },
     { 
-        title: 'Gestión de Cargos', 
+        title: 'Gestión de Cargos y Objetos', 
         path: '/configuracion/cargos', 
         icon: Shield,
         color: 'text-purple-600',
-        description: 'Configuración de jerarquías y permisos'
+        description: 'Configuración de jerarquías, permisos y objetos'
     },
     { 
         title: 'Macroprocesos', 
@@ -37,6 +37,13 @@ export const CONFIGURACION_OPTIONS = [
         icon: Syringe,
         color: 'text-rose-600',
         description: 'Configuración de perfiles biológicos y dosis requeridas'
+    },
+    {
+        title: 'Gestión de Opciones',
+        path: '/configuracion/opciones',
+        icon: SlidersHorizontal,
+        color: 'text-amber-600',
+        description: 'Edita las opciones de ARL, EPS, AFP, contratos y más'
     }
 ];
 
@@ -53,12 +60,12 @@ export const ConfiguracionOptions = ({ onClose }) => {
             description: 'Administración de cuentas y perfiles de acceso'
         },
         { 
-            title: 'Gestión de Cargos', 
+            title: 'Gestión de Cargos y Objetos', 
             path: '/configuracion/cargos', 
             icon: Shield,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
-            description: 'Configuración de jerarquías y permisos'
+            description: 'Configuración de jerarquías, permisos y objetos'
         },
         { 
             title: 'Macroprocesos', 
@@ -83,6 +90,14 @@ export const ConfiguracionOptions = ({ onClose }) => {
             color: 'text-rose-600',
             bgColor: 'bg-rose-50',
             description: 'Configuración de perfiles biológicos y dosis requeridas'
+        },
+        {
+            title: 'Gestión de Opciones',
+            path: '/configuracion/opciones',
+            icon: SlidersHorizontal,
+            color: 'text-amber-600',
+            bgColor: 'bg-amber-50',
+            description: 'Edita las opciones de ARL, EPS, AFP, contratos y más'
         }
     ];
 

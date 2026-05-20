@@ -336,26 +336,23 @@ export const HojaVida = () => {
         e.preventDefault();
         if (!nuevaCarpetaNombre.trim()) return;
         try {
-            await http.post('/categorias-soportes', { nombre: nuevaCarpetaNombre });
-            showAlert({ message: 'Carpeta añadida', status: 'success' });
+            await http.post('/categorias-soportes', { nombre: nuevaCarpetaNombre.trim() });
+            showAlert({ message: 'Carpeta creada globalmente para todos los usuarios', status: 'success' });
             setNuevaCarpetaNombre('');
             cargarCategoriasSoportes();
         } catch (error) {
-            setCategoriasSoportes(prev => [...prev, nuevaCarpetaNombre.trim()]);
-            showAlert({ message: 'Carpeta añadida (Modo Local)', status: 'success' });
-            setNuevaCarpetaNombre('');
+            showAlert({ message: 'Error al crear la carpeta. Inténtalo de nuevo.', status: 'error' });
         }
     };
 
     const handleEliminarCarpeta = async (nombreCarpeta) => {
-        if (!window.confirm(`¿Eliminar la carpeta "${nombreCarpeta}"?`)) return;
+        if (!window.confirm(`¿Eliminar la carpeta "${nombreCarpeta}" de forma permanente para todos los usuarios?`)) return;
         try {
             await http.delete(`/categorias-soportes/${encodeURIComponent(nombreCarpeta)}`);
-            showAlert({ message: 'Carpeta eliminada', status: 'success' });
+            showAlert({ message: 'Carpeta eliminada globalmente', status: 'success' });
             cargarCategoriasSoportes();
         } catch (error) {
-            setCategoriasSoportes(prev => prev.filter(c => c !== nombreCarpeta));
-            showAlert({ message: 'Carpeta eliminada (Modo Local)', status: 'success' });
+            showAlert({ message: 'Error al eliminar la carpeta. Inténtalo de nuevo.', status: 'error' });
         }
     };
 
@@ -676,7 +673,7 @@ export const HojaVida = () => {
                                             <p className="text-xs text-gray-400 mt-2">{datosCV.fotoUrl ? 'Haz clic en el ícono de cámara para cambiar la foto' : 'Sin foto — haz clic en el ícono de cámara para subir una'}</p>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-y-6 lg:gap-x-12">
+                                    <div className={`grid grid-cols-1 ${isAdminOrHR ? 'lg:grid-cols-2' : ''} gap-y-6 lg:gap-x-12`}>
                                         <div className="space-y-4">
                                             <div><label className={labelClass}>Cédula de ciudadanía</label><input required readOnly type="text" className={`${inputClass} ${readOnlyClass}`} value={datosCV.cedula} /></div>
                                             <div><label className={labelClass}>Nombres</label><input required readOnly type="text" className={`${inputClass} ${readOnlyClass}`} value={datosCV.nombres} /></div>
@@ -692,39 +689,28 @@ export const HojaVida = () => {
                                             </div>
                                         </div>
 
-                                        <div className="space-y-4">
-                                            <h4 className="text-xs font-bold text-blue-600 mb-4 uppercase">Información Laboral y Salud</h4>
-                                            <div><label className={labelClass}>Perfil de Vacunación</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.perfilVacunacion || 'No definido'} title="Se configura desde Gestión de Usuarios" /></div>
-                                            <div className="mt-4"><label className={labelClass}>ARL</label><input type="text" className={inputClass} value={datosCV.arl} onChange={(e) => setDatosCV({...datosCV, arl: e.target.value})} /></div>
-                                            <div><label className={labelClass}>EPS</label><input type="text" className={inputClass} value={datosCV.eps} onChange={(e) => setDatosCV({...datosCV, eps: e.target.value})} /></div>
-                                            <div><label className={labelClass}>AFP</label><input type="text" className={inputClass} value={datosCV.afp} onChange={(e) => setDatosCV({...datosCV, afp: e.target.value})} /></div>
-                                            <div><label className={labelClass}>Caja de compensación</label><input type="text" className={inputClass} value={datosCV.cajaCompensacion} onChange={(e) => setDatosCV({...datosCV, cajaCompensacion: e.target.value})} /></div>
-                                            <div><label className={labelClass}>Fecha de ingreso</label><input type="date" className={inputClass} value={datosCV.fechaIngreso} onChange={(e) => setDatosCV({...datosCV, fechaIngreso: e.target.value})} /></div>
-                                            <div><label className={labelClass}>Tipo de contrato</label><select className={inputClass} value={datosCV.tipoContrato} onChange={(e) => setDatosCV({...datosCV, tipoContrato: e.target.value})}><option value="">Seleccione...</option><option value="Fijo">Término Fijo</option><option value="Indefinido">Término Indefinido</option><option value="Prestacion">Prestación de Servicios</option></select></div>
-                                            <div>
-                                                <label className={labelClass}>Sede</label>
-                                                <select className={inputClass} value={datosCV.sedeId} onChange={(e) => setDatosCV({...datosCV, sedeId: e.target.value})}>
-                                                    <option value="">Seleccione Sede...</option>
-                                                    {catalogoSedes.map(sede => (
-                                                        <option key={sede.id} value={sede.id}>{sede.nombre}</option>
-                                                    ))}
-                                                </select>
+                                        {isAdminOrHR && (
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="text-xs font-bold text-blue-600 uppercase">Información Laboral y Salud</h4>
+                                                    <span className="text-[10px] text-gray-400 italic bg-gray-50 px-2 py-0.5 rounded border border-gray-200">Editar en Gestión de Usuarios</span>
+                                                </div>
+                                                <div><label className={labelClass}>Perfil de Vacunación</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.perfilVacunacion || 'No definido'} title="Se configura desde Gestión de Usuarios" /></div>
+                                                <div className="mt-4"><label className={labelClass}>ARL</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.arl || '—'} /></div>
+                                                <div><label className={labelClass}>EPS</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.eps || '—'} /></div>
+                                                <div><label className={labelClass}>AFP</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.afp || '—'} /></div>
+                                                <div><label className={labelClass}>Caja de compensación</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.cajaCompensacion || '—'} /></div>
+                                                <div><label className={labelClass}>Fecha de ingreso</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.fechaIngreso || '—'} /></div>
+                                                <div><label className={labelClass}>Tipo de contrato</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.tipoContrato || '—'} /></div>
+                                                <div><label className={labelClass}>Sede</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={catalogoSedes.find(s => String(s.id) === String(datosCV.sedeId))?.nombre || datosCV.sedeId || '—'} /></div>
+                                                <div><label className={labelClass}>Cargo / Objeto</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={catalogoCargos.find(c => String(c.id) === String(datosCV.cargoId))?.nombre || datosCV.cargoId || '—'} /></div>
+                                                <div><label className={labelClass}>Salario</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.salario || '—'} /></div>
+                                                <div><label className={labelClass}>Subsidio de transporte</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.subsidioTransporte || '—'} /></div>
+                                                <div><label className={labelClass}>Estado</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.estado || '—'} /></div>
+                                                <div><label className={labelClass}>Fecha de retiro</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.fechaRetiro || '—'} /></div>
+                                                <div><label className={labelClass}>Motivo de retiro</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.motivoRetiro || '—'} /></div>
                                             </div>
-                                            <div>
-                                                <label className={labelClass}>Cargo</label>
-                                                <select className={inputClass} value={datosCV.cargoId} onChange={(e) => setDatosCV({...datosCV, cargoId: e.target.value})}>
-                                                    <option value="">Seleccione Cargo...</option>
-                                                    {catalogoCargos.map(cargo => (
-                                                        <option key={cargo.id} value={cargo.id}>{cargo.nombre}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div><label className={labelClass}>Salario</label><input type="number" className={inputClass} value={datosCV.salario} onChange={(e) => setDatosCV({...datosCV, salario: e.target.value})} /></div>
-                                            <div><label className={labelClass}>Subsidio de transporte</label><select className={inputClass} value={datosCV.subsidioTransporte} onChange={(e) => setDatosCV({...datosCV, subsidioTransporte: e.target.value})}><option value="">Seleccione...</option><option value="Si">Sí</option><option value="No">No</option></select></div>
-                                            <div><label className={labelClass}>Estado</label><select className={inputClass} value={datosCV.estado} onChange={(e) => setDatosCV({...datosCV, estado: e.target.value})}><option value="">Seleccione...</option><option value="Activo">Activo</option><option value="Inactivo">Inactivo</option></select></div>
-                                            <div><label className={labelClass}>Fecha de retiro</label><input type="date" className={inputClass} value={datosCV.fechaRetiro} onChange={(e) => setDatosCV({...datosCV, fechaRetiro: e.target.value})} /></div>
-                                            <div><label className={labelClass}>Motivo de retiro</label><input type="text" className={inputClass} value={datosCV.motivoRetiro} onChange={(e) => setDatosCV({...datosCV, motivoRetiro: e.target.value})} /></div>
-                                        </div>
+                                        )}
                                     </div>
                                     <div className="flex justify-end pt-6 border-t border-gray-200">
                                         <button type="submit" className="w-full sm:w-auto px-8 py-2.5 bg-blue-600 text-white font-bold rounded shadow-sm hover:bg-blue-700 transition-colors">Guardar Hoja de Vida</button>

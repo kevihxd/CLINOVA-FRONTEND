@@ -28,6 +28,7 @@ import { CrearActa } from '../modules/actasInformes/pages/CrearActa';
 import { ActaDetalle } from '../modules/actasInformes/pages/ActaDetalle';
 import { Informes } from '../modules/actasInformes/pages/Informes';
 import { AdministracionVacunas } from '../modules/configuracion/pages/AdministracionVacunas';
+import { GestionOpciones } from '../modules/configuracion/pages/GestionOpciones';
 
 export const ROUTES = {
   MI_CUENTA: {
@@ -62,7 +63,8 @@ export const ROUTES = {
     USUARIOS: { path: '/configuracion/usuarios', title: 'Gestión de Usuarios', element: <Usuarios /> },
     MACROPROCESOS: { path: '/configuracion/macroprocesos', title: 'Gestión de Macroprocesos', element: <ConstructionPage title="Gestión de Macroprocesos" /> },
     GRUPOS_DISTRIBUCION: { path: '/configuracion/grupos-distribucion', title: 'Grupos de Distribución', element: <ConstructionPage title="Grupos de Distribución" /> },
-    CARGOS: { path: '/configuracion/cargos', title: 'Gestión de Cargos', element: <GestionCargos /> },
+    CARGOS: { path: '/configuracion/cargos', title: 'Gestión de Cargos y Objetos', element: <GestionCargos /> },
+    OPCIONES: { path: '/configuracion/opciones', title: 'Gestión de Opciones', element: <GestionOpciones /> },
     TIPO_CONTRATO: { path: '/configuracion/tipo-contrato', title: 'Gestión de Tipo Contrato', element: <TipoContrato title="Gestión de Tipo Contrato" /> },
     VACUNAS: { path: '/configuracion/vacunas', title: 'Administración de Vacunas', element: <AdministracionVacunas /> }
   },

@@ -23,6 +23,8 @@ export const ListadoUnico = () => {
     const [filtroTipo, setFiltroTipo] = useState('Todos');
 
     const [showCrearModal, setShowCrearModal] = useState(false);
+    const [activeTab, setActiveTab] = useState('Vigente');
+    const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
         cargarDatos();
@@ -92,6 +94,20 @@ export const ListadoUnico = () => {
         ? tiposDocumento.map(t => t.nombre) 
         : [...new Set(documentos.map(doc => doc.tipo).filter(Boolean))];
 
+    const normalizeText = (text) => {
+        if (!text) return '';
+        return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+    };
+
+    const tabs = [
+        { id: 'Vigente', label: 'Vigente', count: (docs) => docs.filter(d => normalizeText(d.estado) === 'VIGENTE').length },
+        { id: 'En proceso', label: 'En proceso', count: (docs) => docs.filter(d => normalizeText(d.estado) === 'EN REVISIÓN' || normalizeText(d.estado).includes('REVISION')).length },
+        { id: 'A vencer', label: 'A vencer', count: (docs) => docs.filter(d => normalizeText(d.estado) === 'A VENCER').length },
+        { id: 'Vencido', label: 'Vencido', count: (docs) => docs.filter(d => normalizeText(d.estado) === 'VENCIDO').length },
+        { id: 'Migración', label: 'Migración', count: (docs) => docs.filter(d => d.metodoCreacion === 'Documento Migrado').length },
+        { id: 'Obligatorios sin leer', label: 'Obligatorios sin leer', count: (docs) => 0 }
+    ];
+
     const filtrados = documentos.filter(doc => {
         const searchLower = searchTerm.toLowerCase();
         const nombreStr = doc.nombre ? String(doc.nombre).toLowerCase() : '';
@@ -101,8 +117,24 @@ export const ListadoUnico = () => {
         const matchSede = filtroSede === 'Todos' || doc.sede === filtroSede;
         const matchProceso = filtroProceso === 'Todos' || doc.proceso === filtroProceso;
         const matchTipo = filtroTipo === 'Todos' || doc.tipo === filtroTipo;
+
+        let matchTab = true;
+        const normEstado = normalizeText(doc.estado);
+        if (activeTab === 'Vigente') {
+            matchTab = normEstado === 'VIGENTE';
+        } else if (activeTab === 'En proceso') {
+            matchTab = normEstado === 'EN REVISIÓN' || normEstado.includes('REVISION');
+        } else if (activeTab === 'A vencer') {
+            matchTab = normEstado === 'A VENCER';
+        } else if (activeTab === 'Vencido') {
+            matchTab = normEstado === 'VENCIDO';
+        } else if (activeTab === 'Migración') {
+            matchTab = doc.metodoCreacion === 'Documento Migrado';
+        } else if (activeTab === 'Obligatorios sin leer') {
+            matchTab = false; // Mocked
+        }
         
-        return matchSearch && matchSede && matchProceso && matchTipo;
+        return matchSearch && matchSede && matchProceso && matchTipo && matchTab;
     });
 
     const SortArrows = () => (
@@ -113,55 +145,150 @@ export const ListadoUnico = () => {
     );
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6 md:p-8 font-sans">
-            <div className="max-w-[1500px] mx-auto space-y-4">
+        <div className="min-h-screen bg-slate-50 p-4 md:p-6 font-sans">
+            <div className="max-w-[1700px] mx-auto space-y-3">
                 
-                <h1 className="text-[22px] font-bold text-slate-800 tracking-tight mb-4">
-                    Listado único de documentos
-                </h1>
+                {/* Breadcrumb */}
+                <div className="text-[11px] text-[#0d6efd] font-normal hover:underline cursor-pointer">
+                    Gestión documental &gt; Listado único de documentos
+                </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+                <div className="bg-white rounded shadow-sm border border-slate-200 p-4">
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div>
-                            <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Sede</label>
-                            <select value={filtroSede} onChange={(e) => setFiltroSede(e.target.value)} className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
-                                <option value="Todos">Todos</option>
-                                {sedesUnicas.map(sede => <option key={sede} value={sede}>{sede}</option>)}
-                            </select>
+                    {/* Tabs & Search Input Row */}
+                    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-4 border-b border-slate-100 pb-4">
+                        {/* Tabs */}
+                        <div className="flex flex-wrap gap-1.5">
+                            {tabs.map((tab) => {
+                                const countVal = tab.count(documentos);
+                                const isActive = activeTab === tab.id;
+                                const isObligatorio = tab.id === 'Obligatorios sin leer';
+                                
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`px-3 py-1.5 rounded-t border text-xs font-semibold transition-all ${
+                                            isActive
+                                                ? isObligatorio
+                                                    ? 'bg-red-600 text-white border-red-600'
+                                                    : 'bg-[#6c757d] text-white border-[#6c757d]'
+                                                : isObligatorio
+                                                    ? 'bg-white text-red-600 border-red-300 hover:bg-red-50'
+                                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                        {countVal > 0 && (
+                                            <span className="ml-1.5 px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded-full text-[10px] font-bold">
+                                                {countVal}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
-                        <div>
-                            <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Procesos</label>
-                            <select value={filtroProceso} onChange={(e) => setFiltroProceso(e.target.value)} className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
-                                <option value="Todos">Todos</option>
-                                {procesosUnicos.map(proceso => <option key={proceso} value={proceso}>{proceso}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-[13px] font-bold text-slate-700 mb-1.5">Tipo documento</label>
-                            <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
-                                <option value="Todos">Todos</option>
-                                {tiposUnicos.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
-                            </select>
+
+                        {/* Search, Filter & Actions Row */}
+                        <div className="flex flex-wrap items-center gap-1.5 w-full xl:w-auto">
+                            <input
+                                type="text"
+                                placeholder="Buscar por código o nombre..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="border border-slate-300 rounded px-3 py-1.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-full xl:w-64"
+                            />
+                            <button className="px-4 py-1.5 bg-[#f08c3a] hover:bg-[#d9752b] text-white rounded text-xs font-bold transition-colors shadow-sm">
+                                Buscar
+                            </button>
+                            <button 
+                                onClick={() => setShowFilters(!showFilters)}
+                                className={`flex items-center gap-1 px-3 py-1.5 bg-white border rounded text-xs text-slate-700 hover:bg-slate-50 transition-colors shadow-sm ${showFilters ? 'border-blue-500 ring-1 ring-blue-500' : 'border-slate-300'}`}
+                            >
+                                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.24 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" /></svg>
+                                Filtrar
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    setFiltroSede('Todos');
+                                    setFiltroProceso('Todos');
+                                    setFiltroTipo('Todos');
+                                    setSearchTerm('');
+                                }} 
+                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-300 rounded text-xs text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                            >
+                                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                                Quitar Filtros
+                            </button>
+                            <button className="flex items-center gap-1 px-3 py-1.5 bg-[#0d6efd] hover:bg-blue-700 text-white rounded text-xs font-bold transition-colors shadow-sm">
+                                Mis filtros
+                                <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+                            </button>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 mb-6">
-                        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0d6efd] text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"><Plus size={16} strokeWidth={2.5} /> Insertar</button>
-                        <button onClick={() => setShowCrearModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"><FilePlus size={16} strokeWidth={2.5} /> Crear</button>
-                        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded text-sm font-medium hover:bg-red-700 transition-colors shadow-sm"><Trash2 size={16} strokeWidth={2.5} /> Eliminar</button>
-                        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[#198754] text-white rounded text-sm font-medium hover:bg-green-700 transition-colors shadow-sm"><FileSpreadsheet size={16} strokeWidth={2.5} /> Exportar</button>
+                    {/* Collapsible Advanced Filters Section */}
+                    {showFilters && (
+                        <div className="bg-slate-50 border border-slate-200 rounded p-4 mb-4 grid grid-cols-1 md:grid-cols-3 gap-4 animate-fadeIn">
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-600 mb-1">Sede</label>
+                                <select value={filtroSede} onChange={(e) => setFiltroSede(e.target.value)} className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-500 cursor-pointer">
+                                    <option value="Todos">Todos</option>
+                                    {sedesUnicas.map(sede => <option key={sede} value={sede}>{sede}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-600 mb-1">Procesos</label>
+                                <select value={filtroProceso} onChange={(e) => setFiltroProceso(e.target.value)} className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-500 cursor-pointer">
+                                    <option value="Todos">Todos</option>
+                                    {procesosUnicos.map(proceso => <option key={proceso} value={proceso}>{proceso}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-600 mb-1">Tipo documento</label>
+                                <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:border-blue-500 cursor-pointer">
+                                    <option value="Todos">Todos</option>
+                                    {tiposUnicos.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Action Buttons Row */}
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                        <button 
+                            onClick={() => setShowCrearModal(true)} 
+                            className="px-3.5 py-1.5 bg-[#f0ad4e] hover:bg-[#ec971f] text-white rounded text-xs font-bold transition-colors shadow-sm"
+                        >
+                            Crear
+                        </button>
+                        <button className="px-3.5 py-1.5 bg-[#f0ad4e] hover:bg-[#ec971f] text-white rounded text-xs font-bold transition-colors shadow-sm">
+                            Exportar
+                        </button>
+                        <button className="px-3.5 py-1.5 bg-[#f0ad4e] hover:bg-[#ec971f] text-white rounded text-xs font-bold transition-colors shadow-sm">
+                            Importar
+                        </button>
+                        <button className="px-3.5 py-1.5 bg-[#d9534f] hover:bg-[#c9302c] text-white rounded text-xs font-bold transition-colors shadow-sm">
+                            Eliminar
+                        </button>
+                        <button className="px-3.5 py-1.5 bg-[#f0ad4e] hover:bg-[#ec971f] text-white rounded text-xs font-bold transition-colors shadow-sm">
+                            Edición múltiple
+                        </button>
                     </div>
 
+                    {/* Select links */}
+                    <div className="text-[11px] text-blue-600 mb-4 flex gap-2">
+                        <button onClick={() => {}} className="hover:underline">Seleccionar todo</button>
+                        <span className="text-slate-300">|</span>
+                        <button onClick={() => {}} className="hover:underline">Deseleccionar todo</button>
+                    </div>
+
+                    {/* Entries selection dropdown */}
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
-                        <div className="flex items-center gap-2 text-sm text-slate-700">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600">
                             <span>Mostrar</span>
-                            <select value={registrosPorPagina} onChange={(e) => setRegistrosPorPagina(Number(e.target.value))} className="border border-slate-300 rounded px-2 py-1 outline-none focus:border-blue-500 cursor-pointer text-sm"><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select>
+                            <select value={registrosPorPagina} onChange={(e) => setRegistrosPorPagina(Number(e.target.value))} className="border border-slate-300 rounded px-2 py-1 outline-none focus:border-blue-500 cursor-pointer text-xs"><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select>
                             <span>registros</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-700">
-                            <span className="font-medium">Buscar:</span>
-                            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="border border-slate-300 rounded-md px-3 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none w-full sm:w-64" />
                         </div>
                     </div>
 
