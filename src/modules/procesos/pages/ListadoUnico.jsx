@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileSpreadsheet, Eye, Edit2, Trash2, Download, FilePlus, X, FileText, CheckCircle } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, Eye, Edit2, Trash2, Download, FilePlus, X, FileText, CheckCircle, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
 import { useAuth } from '../../../providers/AuthProvider';
+import { TrazabilidadPanel } from '../../../components/TrazabilidadPanel';
 
 export const ListadoUnico = () => {
     const navigate = useNavigate();
@@ -25,6 +26,9 @@ export const ListadoUnico = () => {
     const [showCrearModal, setShowCrearModal] = useState(false);
     const [activeTab, setActiveTab] = useState('Vigente');
     const [showFilters, setShowFilters] = useState(false);
+    const [selectedDoc, setSelectedDoc] = useState(null);
+    const [historialDoc, setHistorialDoc] = useState([]);
+    const [loadingHistorial, setLoadingHistorial] = useState(false);
 
     useEffect(() => {
         cargarDatos();
@@ -36,13 +40,26 @@ export const ListadoUnico = () => {
                 http.get('/documentos').catch(() => ({ data: [] })),
                 http.get('/tipos-documento').catch(() => ({ data: [] }))
             ]);
-            
             const dataDocs = Array.isArray(resDocs) ? resDocs : (resDocs?.data?.data || resDocs?.data || resDocs || []);
             const dataTipos = Array.isArray(resTipos) ? resTipos : (resTipos?.data?.data || resTipos?.data || resTipos || []);
-            
             setDocumentos(dataDocs);
             setTiposDocumento(dataTipos);
         } catch (error) {}
+    };
+
+    const abrirHistorial = async (doc) => {
+        setSelectedDoc(doc);
+        setHistorialDoc([]);
+        setLoadingHistorial(true);
+        try {
+            const res = await http.get(`/documentos/${doc.id}/historial`);
+            const data = res?.data?.data || res?.data || res || [];
+            setHistorialDoc(Array.isArray(data) ? data : []);
+        } catch {
+            setHistorialDoc([]);
+        } finally {
+            setLoadingHistorial(false);
+        }
     };
 
     const eliminarDocumento = async (id) => {
@@ -338,7 +355,8 @@ export const ListadoUnico = () => {
                                                     {isAdmin && doc.estado === 'EN REVISIÓN' && (
                                                         <button onClick={() => aprobarDoc(doc.id)} className="p-1 text-emerald-500 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded" title="Dar Visto Bueno"><CheckCircle size={14} /></button>
                                                     )}
-                                                    <button onClick={() => handleDownload(doc)} className="p-1 text-slate-400 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-slate-200 rounded" title="Ver"><Eye size={14} /></button>
+                                                    <button onClick={() => handleDownload(doc)} className="p-1 text-slate-400 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-slate-200 rounded" title="Ver documento"><Eye size={14} /></button>
+                                                    <button onClick={() => abrirHistorial(doc)} className="p-1 text-slate-400 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200 rounded" title="Ver trazabilidad"><History size={14} /></button>
                                                     <button className="p-1 text-slate-400 hover:text-amber-600 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded" title="Editar"><Edit2 size={14} /></button>
                                                     <button onClick={() => eliminarDocumento(doc.id)} className="p-1 text-slate-400 hover:text-red-600 bg-slate-100 hover:bg-red-50 border border-slate-200 rounded" title="Eliminar"><Trash2 size={14} /></button>
                                                     <button onClick={() => handleDownload(doc)} className="p-1 text-slate-400 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 border border-slate-200 rounded" title="Descargar"><Download size={14} /></button>
@@ -381,6 +399,27 @@ export const ListadoUnico = () => {
                                 <div className="p-4 bg-emerald-100 text-emerald-600 rounded-full group-hover:scale-110 transition-transform shadow-sm"><FileSpreadsheet size={32} strokeWidth={2} /></div>
                                 <span className="font-bold text-slate-700 text-base">Formato o registro</span>
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {selectedDoc && (
+                <div className="fixed inset-0 z-50 flex justify-end">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedDoc(null)} />
+                    <div className="relative w-full max-w-xl bg-slate-50 h-full shadow-2xl flex flex-col overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0">
+                            <div>
+                                <p className="text-xs text-indigo-500 font-bold uppercase tracking-wider">Trazabilidad</p>
+                                <h3 className="font-bold text-slate-800 text-sm mt-0.5 truncate max-w-xs" title={selectedDoc.nombre}>{selectedDoc.nombre}</h3>
+                                <p className="text-xs text-slate-400">{selectedDoc.codigo} · v{selectedDoc.version || '1'}</p>
+                            </div>
+                            <button onClick={() => setSelectedDoc(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            <TrazabilidadPanel logs={historialDoc} loading={loadingHistorial} />
                         </div>
                     </div>
                 </div>

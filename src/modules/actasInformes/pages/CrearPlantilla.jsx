@@ -96,7 +96,7 @@ export const CrearPlantilla = () => {
                 await http.post('/plantillas', payload);
                 showAlert({ message: 'Plantilla creada exitosamente', status: 'success' });
             }
-            navigate('/actas-informes/gestion-actas');
+            navigate('/actas-informes/gestion');
         } catch (error) {
             showAlert({ message: `Error al ${editId ? 'actualizar' : 'crear'} la plantilla`, status: 'error' });
         }

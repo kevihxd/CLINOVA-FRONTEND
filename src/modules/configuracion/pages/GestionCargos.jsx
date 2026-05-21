@@ -1,6 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Save, Users, CheckSquare, Square, Plus, X, Edit, Package } from 'lucide-react';
+import { Shield, Save, Users, CheckSquare, Square, Plus, X, Edit, Package, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { API_BASE_URL } from '../../../config/api';
+
+const CATEGORIAS_PERMISOS = [
+  {
+    nombre: "Configuración",
+    modulos: [
+      { id: "USUARIOS", label: "Gestión de Usuarios" },
+      { id: "CARGOS", label: "Gestión de Cargos y Objetos" },
+      { id: "SEDES", label: "Sedes" },
+      { id: "VACUNAS", label: "Administración de Vacunas" },
+      { id: "OPCIONES", label: "Listas Desplegables" },
+      { id: "TIPO_CONTRATO", label: "Tipos de Contrato" }
+    ]
+  },
+  {
+    nombre: "Talento Humano",
+    modulos: [
+      { id: "HOJAS_VIDA", label: "Hojas de Vida" },
+      { id: "INCAPACIDADES", label: "Incapacidades" },
+      { id: "CURSOS", label: "Gestión de Cursos" },
+      { id: "PERFILES_CARGOS", label: "Perfiles de Cargo" }
+    ]
+  },
+  {
+    nombre: "Actas e Informes",
+    modulos: [
+      { id: "ACTAS", label: "Gestión de Actas" },
+      { id: "PLANTILLAS_ACTAS", label: "Plantillas de Actas" },
+      { id: "INFORMES", label: "Informes y KPIs" }
+    ]
+  },
+  {
+    nombre: "Procesos y Calidad",
+    modulos: [
+      { id: "MAPA_PROCESOS", label: "Mapa de Procesos" },
+      { id: "DOCUMENTOS", label: "Documentos / SGC" }
+    ]
+  }
+];
 
 export const GestionCargos = () => {
     const [activeTab, setActiveTab] = useState('cargos'); // 'cargos' | 'objetos'
@@ -15,6 +53,14 @@ export const GestionCargos = () => {
     const [nuevoCargoNombre, setNuevoCargoNombre] = useState('');
     const [showEditCargoModal, setShowEditCargoModal] = useState(false);
     const [editCargoNombre, setEditCargoNombre] = useState('');
+    const [filtroPermiso, setFiltroPermiso] = useState('');
+    const [categoriasAbiertas, setCategoriasAbiertas] = useState({
+        "Configuración": true,
+        "Talento Humano": true,
+        "Actas e Informes": true,
+        "Procesos y Calidad": true,
+        "Otros Permisos": true
+    });
 
     // ── OBJETOS state ─────────────────────────────────────────────────────────
     const [objetos, setObjetos] = useState([]);
@@ -108,6 +154,43 @@ export const GestionCargos = () => {
         } else {
             setPermisosAsignados([...permisosAsignados, permisoId]);
         }
+    };
+
+    const getPermisoPorModuloYAccion = (moduloId, accion) => {
+        return permisosGlobales.find(p => p.modulo === moduloId && p.accion === accion);
+    };
+
+    const isFilaCompleta = (moduloId) => {
+        const permisosModulo = permisosGlobales.filter(p => p.modulo === moduloId);
+        if (permisosModulo.length === 0) return false;
+        return permisosModulo.every(p => permisosAsignados.includes(p.id));
+    };
+
+    const toggleFila = (moduloId) => {
+        const permisosModulo = permisosGlobales.filter(p => p.modulo === moduloId);
+        if (permisosModulo.length === 0) return;
+
+        const idsModulo = permisosModulo.map(p => p.id);
+        const todosAsignados = idsModulo.every(id => permisosAsignados.includes(id));
+
+        if (todosAsignados) {
+            setPermisosAsignados(prev => prev.filter(id => !idsModulo.includes(id)));
+        } else {
+            setPermisosAsignados(prev => {
+                const nuevo = [...prev];
+                idsModulo.forEach(id => {
+                    if (!nuevo.includes(id)) nuevo.push(id);
+                });
+                return nuevo;
+            });
+        }
+    };
+
+    const toggleCategoria = (catName) => {
+        setCategoriasAbiertas(prev => ({
+            ...prev,
+            [catName]: !prev[catName]
+        }));
     };
 
     const guardarPermisos = async () => {
@@ -207,6 +290,22 @@ export const GestionCargos = () => {
         </div>
     );
 
+    const modulosMapeados = CATEGORIAS_PERMISOS.flatMap(c => c.modulos.map(m => m.id));
+    const permisosSinModulo = permisosGlobales.filter(p => !p.modulo || !modulosMapeados.includes(p.modulo));
+
+    const categoriasFiltradas = CATEGORIAS_PERMISOS.map(cat => {
+        const modulosFiltrados = cat.modulos.filter(mod => 
+            mod.label.toLowerCase().includes(filtroPermiso.toLowerCase()) ||
+            mod.id.toLowerCase().includes(filtroPermiso.toLowerCase())
+        );
+        return { ...cat, modulos: modulosFiltrados };
+    }).filter(cat => cat.modulos.length > 0);
+
+    const otrosPermisosFiltrados = permisosSinModulo.filter(p => 
+        p.nombre.toLowerCase().includes(filtroPermiso.toLowerCase()) ||
+        (p.descripcion && p.descripcion.toLowerCase().includes(filtroPermiso.toLowerCase()))
+    );
+
     return (
         <div className="min-h-screen bg-slate-50 p-6 md:p-8 font-sans">
             <div className="max-w-[1200px] mx-auto space-y-6">
@@ -290,21 +389,196 @@ export const GestionCargos = () => {
                                         <p>Selecciona un cargo en el panel izquierdo</p>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {permisosGlobales.map(permiso => {
-                                            const tienePermiso = permisosAsignados.includes(permiso.id);
-                                            return (
-                                                <div key={permiso.id} onClick={() => togglePermiso(permiso.id)} className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${tienePermiso ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-200'}`}>
-                                                    <div className="mt-0.5">
-                                                        {tienePermiso ? <CheckSquare size={20} className="text-indigo-600" /> : <Square size={20} className="text-slate-400" />}
-                                                    </div>
-                                                    <div>
-                                                        <p className={`font-bold text-sm ${tienePermiso ? 'text-indigo-900' : 'text-slate-700'}`}>{permiso.nombre}</p>
-                                                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{permiso.descripcion || 'Permiso del sistema CLINOVA'}</p>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                    <div className="space-y-4">
+                                        {/* Buscador de permisos */}
+                                        <div className="flex justify-end mb-2">
+                                            <div className="relative w-full max-w-xs">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar modulo/permiso..."
+                                                    value={filtroPermiso}
+                                                    onChange={(e) => setFiltroPermiso(e.target.value)}
+                                                    className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-slate-50/50"
+                                                />
+                                                <Search className="absolute left-3 top-2.5 text-slate-400 w-3.5 h-3.5" />
+                                            </div>
+                                        </div>
+
+                                        {/* Matriz de Permisos */}
+                                        <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
+                                            <table className="w-full text-left border-collapse text-xs">
+                                                <thead>
+                                                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
+                                                        <th className="py-3 px-4 w-2/5">Módulo / Funcionalidad</th>
+                                                        <th className="py-3 px-4 text-center w-1/5">Todas</th>
+                                                        <th className="py-3 px-4 text-center w-1/10">Crear</th>
+                                                        <th className="py-3 px-4 text-center w-1/10">Modificar</th>
+                                                        <th className="py-3 px-4 text-center w-1/10">Eliminar</th>
+                                                        <th className="py-3 px-4 text-center w-1/10">Ver</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {categoriasFiltradas.map(categoria => {
+                                                        const abierta = categoriasAbiertas[categoria.nombre];
+                                                        return (
+                                                            <React.Fragment key={categoria.nombre}>
+                                                                <tr 
+                                                                    onClick={() => toggleCategoria(categoria.nombre)}
+                                                                    className="bg-slate-100/80 border-y border-slate-200 cursor-pointer hover:bg-slate-200/50 transition-colors"
+                                                                >
+                                                                    <td colSpan={6} className="py-2.5 px-4 font-bold text-slate-700 flex items-center gap-2">
+                                                                        {abierta ? <ChevronDown size={14} className="text-slate-500" /> : <ChevronRight size={14} className="text-slate-500" />}
+                                                                        {categoria.nombre}
+                                                                    </td>
+                                                                </tr>
+                                                                {abierta && categoria.modulos.map(modulo => {
+                                                                    const filaCompleta = isFilaCompleta(modulo.id);
+                                                                    
+                                                                    const pCrear = getPermisoPorModuloYAccion(modulo.id, 'CREAR');
+                                                                    const pModificar = getPermisoPorModuloYAccion(modulo.id, 'MODIFICAR');
+                                                                    const pEliminar = getPermisoPorModuloYAccion(modulo.id, 'ELIMINAR');
+                                                                    const pVer = getPermisoPorModuloYAccion(modulo.id, 'VER');
+
+                                                                    return (
+                                                                        <tr key={modulo.id} className="border-b border-slate-100 hover:bg-indigo-50/20 transition-colors">
+                                                                            <td className="py-3 px-4">
+                                                                                <div className="font-medium text-slate-800">{modulo.label}</div>
+                                                                                <div className="text-[10px] text-slate-400 mt-0.5">{modulo.id}</div>
+                                                                            </td>
+                                                                            <td className="py-3 px-4 text-center">
+                                                                                <button 
+                                                                                    type="button"
+                                                                                    onClick={() => toggleFila(modulo.id)} 
+                                                                                    className="mx-auto flex justify-center focus:outline-none"
+                                                                                >
+                                                                                    {filaCompleta ? (
+                                                                                        <CheckSquare size={18} className="text-indigo-600 hover:scale-110 transition-transform" />
+                                                                                    ) : (
+                                                                                        <Square size={18} className="text-slate-300 hover:text-indigo-500 hover:scale-110 transition-transform" />
+                                                                                    )}
+                                                                                </button>
+                                                                            </td>
+                                                                            <td className="py-3 px-4 text-center">
+                                                                                {pCrear ? (
+                                                                                    <button 
+                                                                                        type="button"
+                                                                                        onClick={() => togglePermiso(pCrear.id)} 
+                                                                                        className="mx-auto flex justify-center focus:outline-none"
+                                                                                        title={pCrear.descripcion}
+                                                                                    >
+                                                                                        {permisosAsignados.includes(pCrear.id) ? (
+                                                                                            <CheckSquare size={16} className="text-indigo-600 hover:scale-110 transition-transform" />
+                                                                                        ) : (
+                                                                                            <Square size={16} className="text-slate-300 hover:text-indigo-500 hover:scale-110 transition-transform" />
+                                                                                        )}
+                                                                                    </button>
+                                                                                ) : (
+                                                                                    <span className="text-slate-300 select-none">-</span>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="py-3 px-4 text-center">
+                                                                                {pModificar ? (
+                                                                                    <button 
+                                                                                        type="button"
+                                                                                        onClick={() => togglePermiso(pModificar.id)} 
+                                                                                        className="mx-auto flex justify-center focus:outline-none"
+                                                                                        title={pModificar.descripcion}
+                                                                                    >
+                                                                                        {permisosAsignados.includes(pModificar.id) ? (
+                                                                                            <CheckSquare size={16} className="text-indigo-600 hover:scale-110 transition-transform" />
+                                                                                        ) : (
+                                                                                            <Square size={16} className="text-slate-300 hover:text-indigo-500 hover:scale-110 transition-transform" />
+                                                                                        )}
+                                                                                    </button>
+                                                                                ) : (
+                                                                                    <span className="text-slate-300 select-none">-</span>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="py-3 px-4 text-center">
+                                                                                {pEliminar ? (
+                                                                                    <button 
+                                                                                        type="button"
+                                                                                        onClick={() => togglePermiso(pEliminar.id)} 
+                                                                                        className="mx-auto flex justify-center focus:outline-none"
+                                                                                        title={pEliminar.descripcion}
+                                                                                    >
+                                                                                        {permisosAsignados.includes(pEliminar.id) ? (
+                                                                                            <CheckSquare size={16} className="text-indigo-600 hover:scale-110 transition-transform" />
+                                                                                        ) : (
+                                                                                            <Square size={16} className="text-slate-300 hover:text-indigo-500 hover:scale-110 transition-transform" />
+                                                                                        )}
+                                                                                    </button>
+                                                                                ) : (
+                                                                                    <span className="text-slate-300 select-none">-</span>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="py-3 px-4 text-center">
+                                                                                {pVer ? (
+                                                                                    <button 
+                                                                                        type="button"
+                                                                                        onClick={() => togglePermiso(pVer.id)} 
+                                                                                        className="mx-auto flex justify-center focus:outline-none"
+                                                                                        title={pVer.descripcion}
+                                                                                    >
+                                                                                        {permisosAsignados.includes(pVer.id) ? (
+                                                                                            <CheckSquare size={16} className="text-indigo-600 hover:scale-110 transition-transform" />
+                                                                                        ) : (
+                                                                                            <Square size={16} className="text-slate-300 hover:text-indigo-500 hover:scale-110 transition-transform" />
+                                                                                        )}
+                                                                                    </button>
+                                                                                ) : (
+                                                                                    <span className="text-slate-300 select-none">-</span>
+                                                                                )}
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
+
+                                                    {otrosPermisosFiltrados.length > 0 && (
+                                                        <React.Fragment>
+                                                            <tr 
+                                                                onClick={() => toggleCategoria('Otros Permisos')}
+                                                                className="bg-slate-100/80 border-y border-slate-200 cursor-pointer hover:bg-slate-200/50 transition-colors"
+                                                            >
+                                                                <td colSpan={6} className="py-2.5 px-4 font-bold text-slate-700 flex items-center gap-2">
+                                                                    {categoriasAbiertas['Otros Permisos'] ? <ChevronDown size={14} className="text-slate-500" /> : <ChevronRight size={14} className="text-slate-500" />}
+                                                                    Otros Permisos del Sistema
+                                                                </td>
+                                                            </tr>
+                                                            {categoriasAbiertas['Otros Permisos'] && (
+                                                                <tr>
+                                                                    <td colSpan={6} className="p-4 bg-slate-50/50">
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                                            {otrosPermisosFiltrados.map(permiso => {
+                                                                                const tienePermiso = permisosAsignados.includes(permiso.id);
+                                                                                return (
+                                                                                    <div 
+                                                                                        key={permiso.id} 
+                                                                                        onClick={() => togglePermiso(permiso.id)} 
+                                                                                        className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer bg-white transition-all ${tienePermiso ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-200'}`}
+                                                                                    >
+                                                                                        <div className="mt-0.5">
+                                                                                            {tienePermiso ? <CheckSquare size={18} className="text-indigo-600" /> : <Square size={18} className="text-slate-400" />}
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <p className={`font-bold text-xs ${tienePermiso ? 'text-indigo-900' : 'text-slate-700'}`}>{permiso.nombre}</p>
+                                                                                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{permiso.descripcion || 'Permiso del sistema CLINOVA'}</p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            )}
+                                                        </React.Fragment>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 )}
                             </div>

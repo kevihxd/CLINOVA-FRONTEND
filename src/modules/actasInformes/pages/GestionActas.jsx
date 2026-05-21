@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, CalendarDays, ChevronDown, Plus, Download, Eye, Edit, Trash2, Target, Hourglass, CheckCircle2, X, FilePlus, Copy, LayoutTemplate } from 'lucide-react';
+import { Search, FileText, ChevronDown, Plus, Eye, Edit, Trash2, Target, Hourglass, CheckCircle2, X, FilePlus, Copy, LayoutTemplate, SendHorizonal, Archive } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
@@ -64,11 +64,47 @@ export const GestionActas = () => {
 
     const puedeEditarActa = (acta) => {
         if (!user) return false;
-        if (user.rol === 'ADMIN') return true; 
-        if (user.rol === 'LIDER_DE_PROCESO') {
-
-            return acta.responsable === user.username; 
+        
+        // Obtener rol de forma robusta
+        const roleString = String(user.rol || user.role || user.roles?.[0] || '').toUpperCase();
+        const permisos = user.permisos || user.authorities || [];
+        
+        const isAdmin = 
+            roleString === 'ADMIN' || 
+            roleString === 'ROLE_ADMIN' || 
+            permisos.includes('ROLE_ADMIN') || 
+            permisos.includes('ADMIN');
+            
+        if (isAdmin) return true;
+        
+        const isLider = 
+            roleString === 'LIDER_DE_PROCESO' || 
+            roleString === 'ROLE_LIDER_DE_PROCESO' || 
+            roleString === 'LIDER DE PROCESO' ||
+            permisos.includes('ROLE_LIDER_DE_PROCESO') || 
+            permisos.includes('LIDER_DE_PROCESO') ||
+            permisos.includes('LIDER DE PROCESO');
+            
+        if (isLider) {
+            const username = (user.username || user.sub || '').toLowerCase();
+            const name = (user.name || '').toLowerCase();
+            const resp = (acta.responsable || '').toLowerCase();
+            
+            // Construir nombre completo del perfil si existe
+            let nombreCompleto = '';
+            if (user.persona?.primerNombre) {
+                nombreCompleto = `${user.persona.primerNombre} ${user.persona.primerApellido || ''}`.trim().toLowerCase();
+            }
+            
+            return (
+                resp === username || 
+                (name && resp === name) || 
+                (nombreCompleto && resp === nombreCompleto) ||
+                resp.includes(username) ||
+                username.includes(resp)
+            );
         }
+        
         return false;
     };
 
@@ -80,6 +116,20 @@ export const GestionActas = () => {
             fetchData();
         } catch (error) {
             showAlert({ message: 'Error al eliminar acta', status: 'error' });
+        }
+    };
+
+    const handleCambiarEstado = async (acta, nuevoEstado) => {
+        const mensajeConfirm = nuevoEstado === 'Publicada'
+            ? `¿Publicar el acta "${acta.titulo}"? Una vez publicada será visible para todos.`
+            : `¿Archivar el acta "${acta.titulo}"?`;
+        if (!window.confirm(mensajeConfirm)) return;
+        try {
+            await http.put(`/actas/${acta.id}`, { ...acta, estado: nuevoEstado });
+            showAlert({ message: `Acta ${nuevoEstado === 'Publicada' ? 'publicada' : 'archivada'} exitosamente`, status: 'success' });
+            fetchData();
+        } catch (error) {
+            showAlert({ message: 'Error al cambiar el estado del acta', status: 'error' });
         }
     };
 
@@ -194,7 +244,6 @@ export const GestionActas = () => {
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex items-center justify-center gap-1.5">
-                                               
                                                 <button 
                                                     onClick={() => navigate(`/actas-informes/acta/${acta.id}`)} 
                                                     className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors" 
@@ -205,7 +254,28 @@ export const GestionActas = () => {
 
                                                 {puedeEditarActa(acta) && (
                                                     <>
+                                                        {/* Botón Publicar: solo si está en Borrador */}
+                                                        {acta.estado === 'Borrador' && (
+                                                            <button
+                                                                onClick={() => handleCambiarEstado(acta, 'Publicada')}
+                                                                className="p-1.5 text-gray-400 hover:text-green-700 hover:bg-green-50 rounded transition-colors"
+                                                                title="Publicar acta"
+                                                            >
+                                                                <SendHorizonal className="w-4.5 h-4.5" />
+                                                            </button>
+                                                        )}
+                                                        {/* Botón Archivar: solo si está Publicada */}
+                                                        {acta.estado === 'Publicada' && (
+                                                            <button
+                                                                onClick={() => handleCambiarEstado(acta, 'Archivada')}
+                                                                className="p-1.5 text-gray-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                                                                title="Archivar acta"
+                                                            >
+                                                                <Archive className="w-4.5 h-4.5" />
+                                                            </button>
+                                                        )}
                                                         <button 
+                                                            onClick={() => navigate(`/actas-informes/crear-acta?editId=${acta.id}`)}
                                                             className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors" 
                                                             title="Editar"
                                                         >

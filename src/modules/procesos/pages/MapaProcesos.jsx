@@ -10,11 +10,30 @@ const normalizeText = (text) => {
     return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
 };
 
+const formatFecha = (fecha) => {
+    if (!fecha) return '—';
+    // Si ya viene como DD/MM/YYYY no tocar
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha)) return fecha;
+    // Si viene como YYYY-MM-DD (ISO)
+    const match = fecha.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+    return fecha;
+};
+
 const getEstadoStyle = (estado) => {
     const normalize = normalizeText(estado);
     if (normalize.includes('REVISION')) return 'bg-amber-100 text-amber-700 border-amber-200';
     if (normalize.includes('VIGENTE') || normalize.includes('PUBLICADO')) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
     return 'bg-slate-100 text-slate-600 border-slate-200';
+};
+
+const getActaEstadoStyle = (estado) => {
+    if (!estado) return 'bg-slate-100 text-slate-600 border-slate-200';
+    const normalize = normalizeText(estado);
+    if (normalize.includes('BORRADOR')) return 'bg-amber-100 text-amber-700 border-amber-200';
+    if (normalize.includes('PUBLICADA') || normalize.includes('PUBLICADO')) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (normalize.includes('ARCHIVADA') || normalize.includes('ARCHIVADO')) return 'bg-slate-100 text-slate-600 border-slate-200';
+    return 'bg-blue-100 text-blue-700 border-blue-200';
 };
 
 const getHistorialCambios = (doc) => {
@@ -68,6 +87,7 @@ export const MapaProcesos = () => {
     const [activeTab, setActiveTab] = useState('Documentos');
     const [tiposDocumentales, setTiposDocumentales] = useState([]);
     const [documentosSistema, setDocumentosSistema] = useState([]);
+    const [actasSistema, setActasSistema] = useState([]);
     const [loadingData, setLoadingData] = useState(false);
     const [expandedTipos, setExpandedTipos] = useState({});
 
@@ -127,22 +147,30 @@ export const MapaProcesos = () => {
 
     const tabs = ['Documentos', 'Acciones de Mejora', 'Actas', 'Indicadores', 'Contexto'];
 
+    const fetchDatos = async () => {
+        setLoadingData(true);
+        try {
+            const [resTipos, resDocs, resActas] = await Promise.all([
+                http.get('/tipos-documento').catch(() => ({ data: [] })), 
+                http.get('/documentos').catch(() => ({ data: [] })),
+                http.get('/actas').catch(() => ({ data: [] }))
+            ]);
+            setTiposDocumentales((resTipos.data?.data || resTipos.data || []).sort((a, b) => (a.orden || 99) - (b.orden || 99)));
+            setDocumentosSistema(resDocs.data?.data || resDocs.data || []);
+            setActasSistema(Array.isArray(resActas) ? resActas : (resActas.data?.data || resActas.data || []));
+        } catch (error) {
+        } finally {
+            setLoadingData(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchDatos = async () => {
-            setLoadingData(true);
-            try {
-                const [resTipos, resDocs] = await Promise.all([
-                    http.get('/tipos-documento').catch(() => ({ data: [] })), 
-                    http.get('/documentos').catch(() => ({ data: [] }))
-                ]);
-                setTiposDocumentales((resTipos.data?.data || resTipos.data || []).sort((a, b) => (a.orden || 99) - (b.orden || 99)));
-                setDocumentosSistema(resDocs.data?.data || resDocs.data || []);
-            } catch (error) {
-            } finally {
-                setLoadingData(false);
-            }
-        };
         fetchDatos();
+
+        // Re-fetch cuando el usuario vuelve a esta pestaña/ventana (ej: después de crear/editar acta)
+        const handleFocus = () => fetchDatos();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
     }, [location.pathname]);
 
     const toggleTipo = (tipoId) => setExpandedTipos(prev => ({ ...prev, [tipoId]: !prev[tipoId] }));
@@ -172,6 +200,10 @@ export const MapaProcesos = () => {
         ? documentosSistema.filter(d => normalizeText(d.proceso) === normalizeText(selectedProcess.title)) 
         : [];
 
+    const actasDelProcesoActual = selectedProcess
+        ? actasSistema.filter(a => normalizeText(a.proceso) === normalizeText(selectedProcess.title))
+        : [];
+
     return (
         <div className="min-h-screen bg-slate-50 p-4 md:p-8">
             <div className="max-w-[1200px] mx-auto space-y-8">
@@ -197,11 +229,16 @@ export const MapaProcesos = () => {
                                 ))}
                             </div>
                             <div className="bg-white p-8 overflow-y-auto flex-1">
-                                <h2 className="text-[#666] text-[22px] font-bold uppercase tracking-wide border-b-[3px] border-dotted border-[#ccc] pb-4 mb-6 flex justify-between items-end">
+                                <h2 className="text-[#666] text-[22px] font-bold uppercase tracking-wide border-b-[3px] border-dotted border-[#ccc] pb-4 mb-6 flex justify-between items-end flex-wrap gap-2">
                                     <span>{selectedProcess.title}</span>
-                                    <span className="text-sm font-normal bg-blue-50 text-blue-600 px-3 py-1 rounded-full border border-blue-200">
-                                        Total documentos: {documentosDelProcesoActual.length}
-                                    </span>
+                                    <div className="flex gap-2">
+                                        <span className="text-xs font-normal bg-blue-50 text-blue-600 px-3 py-1 rounded-full border border-blue-200">
+                                            Documentos: {documentosDelProcesoActual.length}
+                                        </span>
+                                        <span className="text-xs font-normal bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full border border-indigo-200">
+                                            Actas: {actasDelProcesoActual.length}
+                                        </span>
+                                    </div>
                                 </h2>
                                 {activeTab === 'Documentos' && (
                                     <>
@@ -254,6 +291,66 @@ export const MapaProcesos = () => {
                                             )}
                                         </div>
                                     </>
+                                )}
+                                {activeTab === 'Actas' && (
+                                    <div className="space-y-6">
+                                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                            <div className="text-xs text-gray-600">
+                                                Visualizando actas oficiales vinculadas a <strong className="text-slate-800">{selectedProcess.title}</strong>.
+                                            </div>
+                                        </div>
+
+                                        {loadingData ? (
+                                            <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /><p className="text-xs">Buscando actas del proceso...</p></div>
+                                        ) : actasDelProcesoActual.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center py-12 text-gray-500 bg-gray-50/50 rounded-xl border border-dashed border-gray-200 p-8 text-center">
+                                                <FileText className="w-12 h-12 text-gray-300 mb-3" />
+                                                <h3 className="text-sm font-bold text-gray-700 mb-1">No hay actas registradas</h3>
+                                                <p className="text-xs text-gray-400 max-w-sm">No se han redactado actas para este proceso en el sistema.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="overflow-hidden border border-gray-200 rounded-xl shadow-sm bg-white">
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-left border-collapse text-xs bg-white">
+                                                        <thead>
+                                                            <tr className="bg-gray-50 border-b border-gray-200 text-slate-700 font-bold uppercase tracking-wider">
+                                                                <th className="px-4 py-3 w-24">Código</th>
+                                                                <th className="px-4 py-3">Título de la reunión</th>
+                                                                <th className="px-4 py-3 w-32">Fecha</th>
+                                                                <th className="px-4 py-3 w-44">Responsable</th>
+                                                                <th className="px-4 py-3 w-28 text-center">Estado</th>
+                                                                <th className="px-4 py-3 w-20 text-center">Acciones</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-100">
+                                                            {actasDelProcesoActual.map((acta) => (
+                                                                <tr key={acta.id} className="hover:bg-slate-50 text-slate-600 transition-colors">
+                                                                    <td className="px-4 py-3 font-mono font-bold text-slate-400">ACT-{acta.id}</td>
+                                                                    <td className="px-4 py-3 font-medium text-slate-800">{acta.titulo}</td>
+                                                                    <td className="px-4 py-3">{formatFecha(acta.fechaInicio || acta.fecha)}</td>
+                                                                    <td className="px-4 py-3">{acta.elaborador || acta.responsable || '—'}</td>
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        <span className={`inline-block text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border shadow-sm ${getActaEstadoStyle(acta.estado)}`}>
+                                                                            {acta.estado}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        <button 
+                                                                            onClick={() => navigate(`/actas-informes/acta/${acta.id}`)}
+                                                                            className="p-1.5 text-slate-400 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-lg shadow-sm transition-all"
+                                                                            title="Ver Detalle"
+                                                                        >
+                                                                            <Eye size={14} />
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                                 <div className="mt-8 pt-6 border-t border-gray-200">
                                     <button onClick={() => setSelectedProcess(null)} className="bg-gradient-to-b from-[#f9f9f9] to-[#e6e6e6] border border-[#ccc] text-[#333] px-6 py-2 rounded shadow-sm hover:from-[#f0f0f0] hover:to-[#d9d9d9] font-bold text-sm">Volver al Mapa</button>

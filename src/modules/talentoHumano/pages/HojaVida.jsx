@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, User, ArrowLeft, FileText, Trash2, Edit2, Save, X, Eye, Upload, Folder, Plus, DownloadCloud, AlertCircle, Calendar, Award, CheckCircle, MapPin, BookOpen, Clock, Syringe, Loader2, ChevronDown, ChevronRight, Settings } from 'lucide-react';
+import { Search, User, ArrowLeft, FileText, Trash2, Edit2, Save, X, Eye, Upload, Folder, Plus, DownloadCloud, AlertCircle, Calendar, Award, CheckCircle, MapPin, BookOpen, Clock, Syringe, Loader2, ChevronDown, ChevronRight, Settings, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import http from '../../../services/httpClient';
@@ -7,6 +7,7 @@ import { useAlert } from '../../../providers/AlertProvider';
 import { useAuth } from '../../../providers/AuthProvider';
 import { cursosService } from '../services/cursos.service';
 import { API_BASE_URL } from '../../../config/api';
+import { TrazabilidadPanel } from '../../../components/TrazabilidadPanel';
 
 export const HojaVida = () => {
     const navigate = useNavigate();
@@ -62,6 +63,9 @@ export const HojaVida = () => {
 
     const [expandedCategories, setExpandedCategories] = useState({});
     const [draggingCategory, setDraggingCategory] = useState(null);
+    const [historialHV, setHistorialHV] = useState([]);
+    const [loadingHistorialHV, setLoadingHistorialHV] = useState(false);
+    const [historialHVNoDisponible, setHistorialHVNoDisponible] = useState(false);
 
     const [showGestionCarpetasModal, setShowGestionCarpetasModal] = useState(false);
     const [nuevaCarpetaNombre, setNuevaCarpetaNombre] = useState('');
@@ -139,6 +143,25 @@ export const HojaVida = () => {
             cargarCursosAsignados();
         }
     }, [activeTab, datosCV.usuarioId, cargarCursosAsignados]);
+
+    useEffect(() => {
+        if (activeTab !== 'trazabilidad' || !hojaVidaId) return;
+        setLoadingHistorialHV(true);
+        setHistorialHV([]);
+        setHistorialHVNoDisponible(false);
+        http.get(`/hojas-vida/${hojaVidaId}/historial`)
+            .then(res => {
+                const data = res?.data?.data || res?.data || res || [];
+                setHistorialHV(Array.isArray(data) ? data : []);
+            })
+            .catch(err => {
+                if (err?.response?.status === 404) {
+                    setHistorialHVNoDisponible(true);
+                }
+                setHistorialHV([]);
+            })
+            .finally(() => setLoadingHistorialHV(false));
+    }, [activeTab, hojaVidaId]);
 
     const fetchHojaVida = async (cedula) => {
         const cedulaTrim = cedula.trim();
@@ -642,6 +665,11 @@ export const HojaVida = () => {
                             <button onClick={() => setActiveTab('cursos')} className={`flex items-center gap-2 px-4 md:px-6 py-3 text-xs md:text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'cursos' ? 'border-b-2 border-blue-600 text-blue-600 bg-white' : 'text-gray-500 hover:text-gray-700'}`}>
                                 <Award className="w-4 h-4" /> Formación y Cursos
                             </button>
+                            {hojaVidaId && (
+                                <button onClick={() => setActiveTab('trazabilidad')} className={`flex items-center gap-2 px-4 md:px-6 py-3 text-xs md:text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'trazabilidad' ? 'border-b-2 border-indigo-600 text-indigo-600 bg-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                                    <History className="w-4 h-4" /> Trazabilidad
+                                </button>
+                            )}
                         </div>
 
                         <div className="p-4 md:p-6">
@@ -899,6 +927,14 @@ export const HojaVida = () => {
                                         )}
                                     </div>
                                 </div>
+                            )}
+
+                            {activeTab === 'trazabilidad' && (
+                                <TrazabilidadPanel
+                                    logs={historialHV}
+                                    loading={loadingHistorialHV}
+                                    titulo={`Trazabilidad — ${cvNombre}`}
+                                />
                             )}
                         </div>
                     </div>

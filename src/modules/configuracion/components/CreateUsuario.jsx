@@ -39,6 +39,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
     const [cargos, setCargos] = useState([]);
     const [objetos, setObjetos] = useState([]);
     const [sedes, setSedes] = useState([]);
+    const [usuariosList, setUsuariosList] = useState([]);
     const [opcionesSelect, setOpcionesSelect] = useState(OPCIONES_DEFAULTS);
 
     const [formData, setFormData] = useState({
@@ -49,7 +50,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
         // Campos laborales
         arl: '', eps: '', afp: '', cajaCompensacion: '', fechaIngreso: '',
         tipoContrato: '', sedeId: '', salario: '', subsidioTransporte: '',
-        estado: '', fechaRetiro: '', pesvFecha: '', motivoRetiro: '',
+        estado: '', fechaRetiro: '', pesvFecha: '', motivoRetiro: '', responsableEvaluacionId: '',
     });
 
     const usaObjeto = ROLES_CON_OBJETO.includes(formData.rol);
@@ -86,6 +87,12 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                 const res = await http.get('/sedes');
                 setSedes(Array.isArray(res) ? res : (res.data || []));
             } catch {}
+            try {
+                const res = await UsuariosService.getAll();
+                setUsuariosList(Array.isArray(res) ? res : (res.data || []));
+            } catch (error) {
+                console.error('Error al cargar los usuarios', error);
+            }
         };
         if (isOpen) fetchData();
     }, [isOpen]);
@@ -123,6 +130,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                 fechaRetiro: editData.fechaRetiro || '',
                 pesvFecha: editData.pesvFecha || '',
                 motivoRetiro: editData.motivoRetiro || '',
+                responsableEvaluacionId: editData.responsableEvaluacionId || '',
             });
         } else {
             setFormData({
@@ -132,7 +140,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                 username: '', password: '', rol: '', cargoId: '', objetoId: '',
                 arl: '', eps: '', afp: '', cajaCompensacion: '', fechaIngreso: '',
                 tipoContrato: '', sedeId: '', salario: '', subsidioTransporte: '',
-                estado: '', fechaRetiro: '', pesvFecha: '', motivoRetiro: '',
+                estado: '', fechaRetiro: '', pesvFecha: '', motivoRetiro: '', responsableEvaluacionId: '',
             });
         }
     }, [editData, isOpen]);
@@ -175,6 +183,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                 fechaRetiro: formData.fechaRetiro || null,
                 pesvFecha: formData.pesvFecha || null,
                 motivoRetiro: formData.motivoRetiro || null,
+                responsableEvaluacionId: formData.responsableEvaluacionId ? Number(formData.responsableEvaluacionId) : null,
             };
 
             if (editData && editData.id) {
@@ -387,6 +396,20 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                                 <select name="sedeId" value={formData.sedeId} onChange={handleChange} className={inputCls}>
                                     <option value="">Seleccione Sede...</option>
                                     {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className={labelCls}>Jefe Inmediato</label>
+                                <select name="responsableEvaluacionId" value={formData.responsableEvaluacionId} onChange={handleChange} className={inputCls}>
+                                    <option value="">Seleccione Jefe Inmediato...</option>
+                                    {usuariosList
+                                        .filter(u => u.id !== editData?.id)
+                                        .map(u => (
+                                            <option key={u.id} value={u.id}>
+                                                {u.persona ? `${u.persona.primerNombre} ${u.persona.primerApellido}` : u.username}
+                                            </option>
+                                        ))
+                                    }
                                 </select>
                             </div>
                             <div className="space-y-1.5">

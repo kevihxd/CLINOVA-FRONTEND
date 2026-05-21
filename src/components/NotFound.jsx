@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Home, ArrowLeft, FileQuestion } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
