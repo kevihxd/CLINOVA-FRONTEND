@@ -1,34 +1,47 @@
+import { lazy } from 'react';
 import ConstructionPage from '../components/ConstructionPage';
-import { HojaVida } from '../modules/talentoHumano/pages/HojaVida';
-import { Organigrama } from '../modules/talentoHumano/pages/Organigrama';
-import { VerDetalleCargo } from '../modules/talentoHumano/pages/VerDetalleCargo';
-import { TipoDocumento } from '../modules/talentoHumano/pages/TipoDocumento'; 
-import { Incapacidades } from '../modules/talentoHumano/pages/Incapacidades';
-import { GestionCursos } from '../modules/talentoHumano/pages/GestionCursos';
-import { MapaProcesos } from '../modules/procesos/pages/MapaProcesos';
-import { TipoDocumentos } from '../modules/procesos/pages/TipoDocumentos'; 
-import { ListadoUnico } from '../modules/procesos/pages/ListadoUnico'; 
-import { CrearDocumentoForm } from '../modules/procesos/pages/CrearDocumento'; 
-import { PerfilesCargos } from '../modules/procesos/pages/PerfilesCargos';
-import { SolicitarDocumento } from '../modules/calidad/pages/SolicitarDocumento';
-import { RevisionDocumento } from '../modules/calidad/pages/RevisionDocumento';
-import { Reporte } from '../modules/calidad/pages/Reporte';
-import { PapeleraReciclaje } from '../modules/calidad/pages/PapeleraReciclaje';
-import { ListadosUnicos } from '../modules/calidad/pages/ListadosUnicos';
-import { DocumentosExternos } from '../modules/calidad/pages/DocumentosExternos';
-import { DiligenciarFormato } from '../modules/calidad/pages/DiligenciarFormato';
-import { Definiciones } from '../modules/calidad/pages/Definiciones';
-import { MiPerfil } from '../modules/miCuenta/pages/MiPerfil';
-import { TipoContrato } from '../modules/configuracion/pages/TipoContrato';
-import { Usuarios } from '../modules/configuracion/pages/Usuarios';
-import { GestionCargos } from '../modules/configuracion/pages/GestionCargos';
-import { GestionActas } from '../modules/actasInformes/pages/GestionActas';
-import { CrearPlantilla } from '../modules/actasInformes/pages/CrearPlantilla';
-import { CrearActa } from '../modules/actasInformes/pages/CrearActa';
-import { ActaDetalle } from '../modules/actasInformes/pages/ActaDetalle';
-import { Informes } from '../modules/actasInformes/pages/Informes';
-import { AdministracionVacunas } from '../modules/configuracion/pages/AdministracionVacunas';
-import { GestionOpciones } from '../modules/configuracion/pages/GestionOpciones';
+
+// --- MI CUENTA ---
+const MiPerfil = lazy(() => import('../modules/miCuenta/pages/MiPerfil').then(m => ({ default: m.MiPerfil })));
+
+// --- TALENTO HUMANO ---
+const HojaVida = lazy(() => import('../modules/talentoHumano/pages/HojaVida').then(m => ({ default: m.HojaVida })));
+const Organigrama = lazy(() => import('../modules/talentoHumano/pages/Organigrama').then(m => ({ default: m.Organigrama })));
+const VerDetalleCargo = lazy(() => import('../modules/talentoHumano/pages/VerDetalleCargo').then(m => ({ default: m.VerDetalleCargo })));
+const TipoDocumento = lazy(() => import('../modules/talentoHumano/pages/TipoDocumento').then(m => ({ default: m.TipoDocumento })));
+const Incapacidades = lazy(() => import('../modules/talentoHumano/pages/Incapacidades').then(m => ({ default: m.Incapacidades })));
+const GestionCursos = lazy(() => import('../modules/talentoHumano/pages/GestionCursos').then(m => ({ default: m.GestionCursos })));
+
+// --- PROCESOS ---
+const MapaProcesos = lazy(() => import('../modules/procesos/pages/MapaProcesos').then(m => ({ default: m.MapaProcesos })));
+const TipoDocumentos = lazy(() => import('../modules/procesos/pages/TipoDocumentos').then(m => ({ default: m.TipoDocumentos })));
+const ListadoUnico = lazy(() => import('../modules/procesos/pages/ListadoUnico').then(m => ({ default: m.ListadoUnico })));
+const CrearDocumentoForm = lazy(() => import('../modules/procesos/pages/CrearDocumento').then(m => ({ default: m.CrearDocumentoForm })));
+const PerfilesCargos = lazy(() => import('../modules/procesos/pages/PerfilesCargos').then(m => ({ default: m.PerfilesCargos })));
+
+// --- CALIDAD ---
+const SolicitarDocumento = lazy(() => import('../modules/calidad/pages/SolicitarDocumento').then(m => ({ default: m.SolicitarDocumento })));
+const RevisionDocumento = lazy(() => import('../modules/calidad/pages/RevisionDocumento').then(m => ({ default: m.RevisionDocumento })));
+const Reporte = lazy(() => import('../modules/calidad/pages/Reporte').then(m => ({ default: m.Reporte })));
+const PapeleraReciclaje = lazy(() => import('../modules/calidad/pages/PapeleraReciclaje').then(m => ({ default: m.PapeleraReciclaje })));
+const ListadosUnicos = lazy(() => import('../modules/calidad/pages/ListadosUnicos').then(m => ({ default: m.ListadosUnicos })));
+const DocumentosExternos = lazy(() => import('../modules/calidad/pages/DocumentosExternos').then(m => ({ default: m.DocumentosExternos })));
+const DiligenciarFormato = lazy(() => import('../modules/calidad/pages/DiligenciarFormato').then(m => ({ default: m.DiligenciarFormato })));
+const Definiciones = lazy(() => import('../modules/calidad/pages/Definiciones').then(m => ({ default: m.Definiciones })));
+
+// --- CONFIGURACIÓN ---
+const TipoContrato = lazy(() => import('../modules/configuracion/pages/TipoContrato').then(m => ({ default: m.TipoContrato })));
+const Usuarios = lazy(() => import('../modules/configuracion/pages/Usuarios').then(m => ({ default: m.Usuarios })));
+const GestionCargos = lazy(() => import('../modules/configuracion/pages/GestionCargos').then(m => ({ default: m.GestionCargos })));
+const AdministracionVacunas = lazy(() => import('../modules/configuracion/pages/AdministracionVacunas').then(m => ({ default: m.AdministracionVacunas })));
+const GestionOpciones = lazy(() => import('../modules/configuracion/pages/GestionOpciones').then(m => ({ default: m.GestionOpciones })));
+
+// --- ACTAS E INFORMES ---
+const GestionActas = lazy(() => import('../modules/actasInformes/pages/GestionActas').then(m => ({ default: m.GestionActas })));
+const CrearPlantilla = lazy(() => import('../modules/actasInformes/pages/CrearPlantilla').then(m => ({ default: m.CrearPlantilla })));
+const CrearActa = lazy(() => import('../modules/actasInformes/pages/CrearActa').then(m => ({ default: m.CrearActa })));
+const ActaDetalle = lazy(() => import('../modules/actasInformes/pages/ActaDetalle').then(m => ({ default: m.ActaDetalle })));
+const Informes = lazy(() => import('../modules/actasInformes/pages/Informes').then(m => ({ default: m.Informes })));
 
 export const ROUTES = {
   MI_CUENTA: {

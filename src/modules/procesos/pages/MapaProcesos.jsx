@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowDownAZ, ArrowUpZA, Plus, Minus, Loader2, FileText, Download, Eye } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -101,7 +101,7 @@ export const MapaProcesos = () => {
         setSelectedDocument(doc);
         setPdfUrl('');
         try {
-            if (doc.ubicacion && doc.ubicacion !== 'SIN_ARCHIVO') {
+            if (doc.rutaArchivoLocal && doc.rutaArchivoLocal !== 'SIN_ARCHIVO') {
                 const blob = await http.get(`/documentos/descargar/${doc.id}`, { responseType: 'blob' });
                 const url = window.URL.createObjectURL(blob);
                 setPdfUrl(url);
@@ -196,12 +196,52 @@ export const MapaProcesos = () => {
         }
     };
 
+    const getMappedProcess = (dbProceso) => {
+        if (!dbProceso) return null;
+        const normDb = normalizeText(dbProceso);
+        for (const p of procesos) {
+            const normMap = normalizeText(p.title);
+            if (normDb === normMap) return p;
+            if (normDb.replace('GESTION DE ', 'GESTION ') === normMap.replace('GESTION DE ', 'GESTION ')) return p;
+            
+            // Common aliases and typos from DB
+            if (normDb === 'PROGRAMA DE HUMANIZACION' && normMap === 'GESTION DE HUMANIZACION') return p;
+            if (normDb === 'GESTION DE INTERNACION DOMICIALIARIA' && normMap === 'GESTION DE INTERNACION DOMICILIARIO') return p;
+            if (normDb === 'GESTION DE DOCENCIA E INVESTIGACION' && normMap === 'DOCENCIA E INVESTIGACION') return p;
+            if (normDb === 'GESTION TECNOLOGIA Y SISTEMAS DE INFORMACION' && normMap === 'GESTION DE TECNOLOGIA Y SISTEMAS DE INFORMACION') return p;
+        }
+        return null;
+    };
+
+    const otrosProcesosUnicos = useMemo(() => {
+        const unmapped = new Set();
+        documentosSistema.forEach(d => {
+            if (d.proceso && !getMappedProcess(d.proceso)) {
+                unmapped.add(d.proceso.toUpperCase());
+            }
+        });
+        actasSistema.forEach(a => {
+            if (a.proceso && !getMappedProcess(a.proceso)) {
+                unmapped.add(a.proceso.toUpperCase());
+            }
+        });
+        return Array.from(unmapped).sort();
+    }, [documentosSistema, actasSistema]);
+
     const documentosDelProcesoActual = selectedProcess 
-        ? documentosSistema.filter(d => normalizeText(d.proceso) === normalizeText(selectedProcess.title)) 
+        ? documentosSistema.filter(d => {
+            if (selectedProcess.isUnmapped) return normalizeText(d.proceso) === normalizeText(selectedProcess.title);
+            const mapped = getMappedProcess(d.proceso);
+            return mapped && mapped.id === selectedProcess.id;
+        }) 
         : [];
 
     const actasDelProcesoActual = selectedProcess
-        ? actasSistema.filter(a => normalizeText(a.proceso) === normalizeText(selectedProcess.title))
+        ? actasSistema.filter(a => {
+            if (selectedProcess.isUnmapped) return normalizeText(a.proceso) === normalizeText(selectedProcess.title);
+            const mapped = getMappedProcess(a.proceso);
+            return mapped && mapped.id === selectedProcess.id;
+        })
         : [];
 
     return (
@@ -217,6 +257,29 @@ export const MapaProcesos = () => {
                         <button key={p.id} onClick={() => setSelectedProcess(p)} style={{ position: 'absolute', top: p.top, left: p.left, width: p.width, height: p.height }} className="bg-blue-500 opacity-0 hover:opacity-30 transition-opacity duration-200 cursor-pointer rounded-lg z-10" title={p.title} />
                     ))}
                 </div>
+                
+                {otrosProcesosUnicos.length > 0 && (
+                    <div className="mt-12">
+                        <div className="flex items-center gap-3 mb-6 border-b border-gray-200 pb-2">
+                            <div className="bg-blue-100 p-2 rounded-lg">
+                                <FileText className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <h2 className="text-xl font-bold text-slate-700">Otras Áreas / Procesos</h2>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            {otrosProcesosUnicos.map((proc, i) => (
+                                <button 
+                                    key={i} 
+                                    onClick={() => setSelectedProcess({ id: `unmapped-${i}`, title: proc, isUnmapped: true })} 
+                                    className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-col items-center justify-center text-center hover:bg-blue-50 hover:border-blue-200 hover:shadow-md transition-all group min-h-[100px]"
+                                >
+                                    <svg className="w-10 h-10 text-slate-300 group-hover:text-blue-500 mb-2 transition-colors" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
+                                    <span className="text-[11px] font-bold text-slate-600 group-hover:text-blue-700 leading-tight">{proc}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             <AnimatePresence>

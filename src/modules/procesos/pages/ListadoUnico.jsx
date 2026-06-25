@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, FileSpreadsheet, Eye, Edit2, Trash2, Download, X, FileText, CheckCircle, History, Save, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useDebounce } from '../../../hooks/useDebounce';
 import { useNavigate } from 'react-router-dom';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
@@ -338,6 +339,13 @@ const EditarDocumentoModal = ({ doc, onClose, onSaved, tiposDocumento, cargos, s
     );
 };
 
+const SortArrows = () => (
+    <div className="inline-flex flex-col ml-1 opacity-50">
+        <svg className="w-2 h-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 15l-6-6-6 6" /></svg>
+        <svg className="w-2 h-2 -mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M6 9l6 6 6-6" /></svg>
+    </div>
+);
+
 /* ─── ListadoUnico ─────────────────────────────────────────── */
 export const ListadoUnico = () => {
     const navigate = useNavigate();
@@ -353,7 +361,9 @@ export const ListadoUnico = () => {
     const [usuarios, setUsuarios] = useState([]);
 
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [registrosPorPagina, setRegistrosPorPagina] = useState(10);
+    const [paginaActual, setPaginaActual] = useState(1);
     const [filtroSede, setFiltroSede] = useState('Todos');
     const [filtroProceso, setFiltroProceso] = useState('Todos');
     const [filtroTipo, setFiltroTipo] = useState('Todos');
@@ -395,7 +405,7 @@ export const ListadoUnico = () => {
                 const n = u.persona ? `${u.persona.primerNombre || ''} ${u.persona.primerApellido || ''}`.trim() : `${u.nombres || ''} ${u.apellidos || ''}`.trim();
                 return n || u.username;
             }));
-        } catch {}
+        } catch (err) { console.warn('Error silenciado:', err?.message); }
     };
 
     const abrirHistorial = async (doc) => {
@@ -406,7 +416,7 @@ export const ListadoUnico = () => {
             const res = await http.get(`/documentos/${doc.id}/historial`);
             const data = res?.data?.data || res?.data || res || [];
             setHistorialDoc(Array.isArray(data) ? data : []);
-        } catch { setHistorialDoc([]); }
+        } catch (err) { console.warn('Error silenciado:', err?.message); setHistorialDoc([]); }
         finally { setLoadingHistorial(false); }
     };
 
@@ -416,7 +426,7 @@ export const ListadoUnico = () => {
             await http.delete(`/documentos/${id}`);
             showAlert({ message: 'Documento eliminado correctamente', status: 'success' });
             cargarDatos();
-        } catch {}
+        } catch (err) { console.warn('Error silenciado:', err?.message); }
     };
 
     const aprobarDoc = async (id) => {
@@ -425,11 +435,11 @@ export const ListadoUnico = () => {
             await http.put(`/documentos/${id}/aprobar`);
             showAlert({ message: 'Documento aprobado exitosamente', status: 'success' });
             cargarDatos();
-        } catch {}
+        } catch (err) { console.warn('Error silenciado:', err?.message); }
     };
 
     const handleDownload = async (doc) => {
-        if (!doc.ubicacion || doc.ubicacion === 'SIN_ARCHIVO') {
+        if (!doc.rutaArchivoLocal || doc.rutaArchivoLocal === 'SIN_ARCHIVO') {
             showAlert({ message: 'Este documento no tiene un archivo físico.', status: 'warning' });
             return;
         }
@@ -449,41 +459,38 @@ export const ListadoUnico = () => {
 
     const normalizeText = t => t ? String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase() : '';
 
-    const sedesUnicas = [...new Set(documentos.map(d => d.sede).filter(Boolean))];
-    const procesosUnicos = [...new Set(documentos.map(d => d.proceso).filter(Boolean))];
-    const tiposUnicos = tiposDocumento.length > 0 ? tiposDocumento : [...new Set(documentos.map(d => d.tipo).filter(Boolean))];
+    const { sedesUnicas, procesosUnicos, tiposUnicos } = useMemo(() => ({
+        sedesUnicas: [...new Set(documentos.map(d => d.sede).filter(Boolean))],
+        procesosUnicos: [...new Set(documentos.map(d => d.proceso).filter(Boolean))],
+        tiposUnicos: tiposDocumento.length > 0 ? tiposDocumento : [...new Set(documentos.map(d => d.tipo).filter(Boolean))]
+    }), [documentos, tiposDocumento]);
 
-    const tabs = [
+    const tabs = useMemo(() => [
         { id: 'Vigente', label: 'Vigente', count: docs => docs.filter(d => normalizeText(d.estado) === 'VIGENTE').length },
         { id: 'En proceso', label: 'En proceso', count: docs => docs.filter(d => normalizeText(d.estado).includes('REVISION') || normalizeText(d.estado) === 'EN REVISIÓN').length },
         { id: 'A vencer', label: 'A vencer', count: docs => docs.filter(d => normalizeText(d.estado) === 'A VENCER').length },
         { id: 'Vencido', label: 'Vencido', count: docs => docs.filter(d => normalizeText(d.estado) === 'VENCIDO').length },
         { id: 'Migración', label: 'Migración', count: docs => docs.filter(d => d.metodoCreacion === 'Documento Migrado').length },
         { id: 'Obligatorios sin leer', label: 'Obligatorios sin leer', count: () => 0 },
-    ];
+    ], []);
 
-    const filtrados = documentos.filter(doc => {
-        const t = searchTerm.toLowerCase();
-        const matchSearch = (doc.nombre || '').toLowerCase().includes(t) || (doc.codigo || '').toLowerCase().includes(t);
-        const matchSede = filtroSede === 'Todos' || doc.sede === filtroSede;
-        const matchProceso = filtroProceso === 'Todos' || doc.proceso === filtroProceso;
-        const matchTipo = filtroTipo === 'Todos' || doc.tipo === filtroTipo;
-        const norm = normalizeText(doc.estado);
-        const matchTab = activeTab === 'Vigente' ? norm === 'VIGENTE'
-            : activeTab === 'En proceso' ? norm.includes('REVISION')
-            : activeTab === 'A vencer' ? norm === 'A VENCER'
-            : activeTab === 'Vencido' ? norm === 'VENCIDO'
-            : activeTab === 'Migración' ? doc.metodoCreacion === 'Documento Migrado'
-            : false;
-        return matchSearch && matchSede && matchProceso && matchTipo && matchTab;
-    });
-
-    const SortArrows = () => (
-        <div className="inline-flex flex-col ml-1 opacity-50">
-            <svg className="w-2 h-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 15l-6-6-6 6" /></svg>
-            <svg className="w-2 h-2 -mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M6 9l6 6 6-6" /></svg>
-        </div>
-    );
+    const filtrados = useMemo(() => {
+        return documentos.filter(doc => {
+            const t = debouncedSearchTerm.toLowerCase();
+            const matchSearch = (doc.nombre || '').toLowerCase().includes(t) || (doc.codigo || '').toLowerCase().includes(t);
+            const matchSede = filtroSede === 'Todos' || doc.sede === filtroSede;
+            const matchProceso = filtroProceso === 'Todos' || doc.proceso === filtroProceso;
+            const matchTipo = filtroTipo === 'Todos' || doc.tipo === filtroTipo;
+            const norm = normalizeText(doc.estado);
+            const matchTab = activeTab === 'Vigente' ? norm === 'VIGENTE'
+                : activeTab === 'En proceso' ? norm.includes('REVISION')
+                : activeTab === 'A vencer' ? norm === 'A VENCER'
+                : activeTab === 'Vencido' ? norm === 'VENCIDO'
+                : activeTab === 'Migración' ? doc.metodoCreacion === 'Documento Migrado'
+                : false;
+            return matchSearch && matchSede && matchProceso && matchTipo && matchTab;
+        });
+    }, [documentos, debouncedSearchTerm, filtroSede, filtroProceso, filtroTipo, activeTab]);
 
     return (
         <div className="min-h-screen bg-slate-50 p-4 md:p-6 font-sans">
@@ -503,7 +510,7 @@ export const ListadoUnico = () => {
                                 const isActive = activeTab === tab.id;
                                 const isObl = tab.id === 'Obligatorios sin leer';
                                 return (
-                                    <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                                    <button key={tab.id} onClick={() => { setActiveTab(tab.id); setPaginaActual(1); }}
                                         className={`px-3 py-1.5 rounded-t border text-xs font-semibold transition-all ${isActive ? isObl ? 'bg-red-600 text-white border-red-600' : 'bg-[#6c757d] text-white border-[#6c757d]' : isObl ? 'bg-white text-red-600 border-red-300 hover:bg-red-50' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
                                         {tab.label}
                                         {countVal > 0 && <span className="ml-1.5 px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded-full text-[10px] font-bold">{countVal}</span>}
@@ -571,7 +578,7 @@ export const ListadoUnico = () => {
 
                     <div className="flex items-center gap-1.5 text-xs text-slate-600 mb-4">
                         <span>Mostrar</span>
-                        <select value={registrosPorPagina} onChange={e => setRegistrosPorPagina(Number(e.target.value))} className="border border-slate-300 rounded px-2 py-1 outline-none focus:border-blue-500 cursor-pointer text-xs">
+                        <select value={registrosPorPagina} onChange={e => { setRegistrosPorPagina(Number(e.target.value)); setPaginaActual(1); }} className="border border-slate-300 rounded px-2 py-1 outline-none focus:border-blue-500 cursor-pointer text-xs">
                             {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
                         </select>
                         <span>registros</span>
@@ -593,7 +600,7 @@ export const ListadoUnico = () => {
                             <tbody>
                                 {filtrados.length === 0 ? (
                                     <tr><td colSpan="12" className="px-4 py-8 text-center text-slate-500 text-sm border-b border-slate-200">No se encontraron registros.</td></tr>
-                                ) : filtrados.slice(0, registrosPorPagina).map(doc => (
+                                ) : filtrados.slice((paginaActual - 1) * registrosPorPagina, paginaActual * registrosPorPagina).map(doc => (
                                     <tr key={doc.id} className="hover:bg-slate-50 border-b border-slate-200 text-[13px] text-slate-600">
                                         <td className="px-3 py-2 border-r border-slate-200 text-center">{doc.id}</td>
                                         <td className="px-3 py-2 border-r border-slate-200">{doc.codigo || 'N/A'}</td>
@@ -631,11 +638,38 @@ export const ListadoUnico = () => {
                     </div>
 
                     <div className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-600">
-                        <div>Mostrando {filtrados.length === 0 ? 0 : 1} a {Math.min(filtrados.length, registrosPorPagina)} de {filtrados.length} registros</div>
+                        <div>Mostrando {filtrados.length === 0 ? 0 : (paginaActual - 1) * registrosPorPagina + 1} a {Math.min(filtrados.length, paginaActual * registrosPorPagina)} de {filtrados.length} registros</div>
                         <div className="flex items-center">
-                            <button className="px-3 py-1.5 border border-slate-300 rounded-l text-slate-600 hover:bg-slate-50">Anterior</button>
-                            <button className="px-3 py-1.5 border-t border-b border-slate-300 bg-blue-600 text-white font-medium">1</button>
-                            <button className="px-3 py-1.5 border border-slate-300 rounded-r text-slate-600 hover:bg-slate-50">Siguiente</button>
+                            <button
+                                onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                                disabled={paginaActual === 1}
+                                className="px-3 py-1.5 border border-slate-300 rounded-l text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >Anterior</button>
+                            {Array.from({ length: Math.min(5, Math.ceil(filtrados.length / registrosPorPagina)) }, (_, i) => {
+                                const totalPages = Math.ceil(filtrados.length / registrosPorPagina);
+                                let page;
+                                if (totalPages <= 5) {
+                                    page = i + 1;
+                                } else if (paginaActual <= 3) {
+                                    page = i + 1;
+                                } else if (paginaActual >= totalPages - 2) {
+                                    page = totalPages - 4 + i;
+                                } else {
+                                    page = paginaActual - 2 + i;
+                                }
+                                return (
+                                    <button key={page} onClick={() => setPaginaActual(page)}
+                                        className={`px-3 py-1.5 border-t border-b border-slate-300 font-medium text-sm ${
+                                            page === paginaActual ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'
+                                        }`}
+                                    >{page}</button>
+                                );
+                            })}
+                            <button
+                                onClick={() => setPaginaActual(p => Math.min(Math.ceil(filtrados.length / registrosPorPagina), p + 1))}
+                                disabled={paginaActual >= Math.ceil(filtrados.length / registrosPorPagina)}
+                                className="px-3 py-1.5 border border-slate-300 rounded-r text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >Siguiente</button>
                         </div>
                     </div>
                 </div>

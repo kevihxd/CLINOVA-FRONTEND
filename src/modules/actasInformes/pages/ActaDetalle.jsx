@@ -5,9 +5,45 @@ import {
     MapPin, Link, Calendar, Tag, FileCheck, Users, Briefcase, Lock
 } from 'lucide-react';
 import http from '../../../services/httpClient';
+import { API_BASE_URL } from '../../../config/api';
 import { useAlert } from '../../../providers/AlertProvider';
 import { useAuth } from '../../../providers/AuthProvider';
 import { TrazabilidadPanel } from '../../../components/TrazabilidadPanel';
+
+const processHtmlImages = (html) => {
+    if (!html) return '<p>Sin contenido.</p>';
+    return html.replace(/https:\/\/www\.kawak\.com\.co\/clinicalhouse\//g, `${API_BASE_URL}/uploads/DATA/`);
+};
+
+const SecureHtmlContent = ({ html, className, style }) => {
+    const containerRef = React.useRef(null);
+
+    React.useEffect(() => {
+        if (!containerRef.current) return;
+        const imgs = containerRef.current.querySelectorAll('img');
+        const token = localStorage.getItem('token');
+
+        imgs.forEach(async (img) => {
+            const src = img.getAttribute('src');
+            // Si la imagen apunta a nuestro backend, solicitamos con JWT
+            if (src && src.startsWith(API_BASE_URL) && !src.startsWith('blob:')) {
+                try {
+                    const response = await fetch(src, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        img.src = URL.createObjectURL(blob);
+                    }
+                } catch (error) {
+                    console.error('Error cargando imagen segura en Acta:', error);
+                }
+            }
+        });
+    }, [html]);
+
+    return <div ref={containerRef} className={className} style={style} dangerouslySetInnerHTML={{ __html: html }} />;
+};
 
 const PRINT_STYLES = `
 @media print {
@@ -162,9 +198,9 @@ const PrintableActa = ({ acta }) => {
                 </div>
 
                 <SectionHeader label="Temas Tratados" />
-                <div
+                <SecureHtmlContent
                     style={{ fontSize: '9pt', lineHeight: '1.6', color: '#111', minHeight: '200pt' }}
-                    dangerouslySetInnerHTML={{ __html: acta.contenidoHtml || '<p>Sin contenido.</p>' }}
+                    html={processHtmlImages(acta.contenidoHtml)}
                 />
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12pt', marginTop: '30pt', borderTop: '1px solid #ccc', paddingTop: '10pt' }}>
@@ -403,7 +439,7 @@ export const ActaDetalle = () => {
                                 ))}
                             </div>
 
-                            <div className="p-8 prose max-w-none flex-1" dangerouslySetInnerHTML={{ __html: acta.contenidoHtml }} />
+                            <SecureHtmlContent className="p-8 prose max-w-none flex-1" html={processHtmlImages(acta.contenidoHtml)} />
                         </div>
 
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-[600px]">

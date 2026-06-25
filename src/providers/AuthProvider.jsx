@@ -19,8 +19,8 @@ export const AuthProvider = ({ children }) => {
     const decodeToken = (token) => {
         try {
             return jwtDecode(token);
-        } catch (error) {
-            console.error("Error al decodificar token", error);
+        } catch {
+            // Token inválido o malformado — se retorna null para forzar logout
             return null;
         }
     };

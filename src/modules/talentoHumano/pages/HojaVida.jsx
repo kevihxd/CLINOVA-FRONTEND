@@ -6,6 +6,7 @@ import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
 import { useAuth } from '../../../providers/AuthProvider';
 import { cursosService } from '../services/cursos.service';
+import SecureImage from '../../../components/SecureImage';
 import { API_BASE_URL } from '../../../config/api';
 import { TrazabilidadPanel } from '../../../components/TrazabilidadPanel';
 
@@ -84,8 +85,7 @@ export const HojaVida = () => {
 
     const cargarCategoriasSoportes = useCallback(async () => {
         try {
-            const res = await http.get('/categorias-soportes');
-            const data = res.data || res;
+            const data = await http.get('/categorias-soportes');
             const nombres = Array.isArray(data) ? data.map(c => c.nombre || c) : [];
             if (nombres.length === 0) {
                 setCategoriasSoportes(["Acta de grado Profesional", "Cédula de ciudadanía", "Otros Soportes"]);
@@ -406,7 +406,10 @@ export const HojaVida = () => {
             setResultadosIA(prev => [...prev, data.data || data]);
             showAlert({ message: 'Documento subido exitosamente', status: 'success' });
             setExpandedCategories(prev => ({ ...prev, [categoria]: true }));
-        } catch (error) {}
+        } catch (error) {
+            const msg = error?.response?.data?.message || 'Error al subir el documento';
+            showAlert({ message: msg, status: 'error' });
+        }
     };
 
     const handleDrop = useCallback(async (e, categoria) => {
@@ -426,8 +429,11 @@ export const HojaVida = () => {
         try {
             await http.delete(`/soportes/${idSoporte}`);
             setResultadosIA(prev => prev.filter(doc => doc.id !== idSoporte));
-            showAlert({ message: 'Documento eliminado', status: 'success' });
-        } catch (error) {}
+            showAlert({ message: 'Documento eliminado correctamente', status: 'success' });
+        } catch (error) {
+            const msg = error?.response?.data?.message || 'Error al eliminar el documento';
+            showAlert({ message: msg, status: 'error' });
+        }
     };
 
     const handleGuardarNombre = async (idSoporte) => {
@@ -496,7 +502,7 @@ export const HojaVida = () => {
     const verDocumento = async (soporteId, nombreArchivo) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/api/v1/soportes/${soporteId}/ver`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/soportes/descargar/${soporteId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('No se pudo obtener el archivo');
@@ -512,7 +518,7 @@ export const HojaVida = () => {
     const handleDescargarDocumento = async (soporteId, nombreArchivo) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/api/v1/soportes/${soporteId}/ver`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/soportes/descargar/${soporteId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('No se pudo descargar el archivo');
@@ -680,11 +686,10 @@ export const HojaVida = () => {
                                         <div className="relative shrink-0">
                                             <div className="w-24 h-24 rounded-full border-2 border-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center shadow-sm">
                                                 {datosCV.fotoUrl ? (
-                                                    <img
+                                                    <SecureImage
                                                         src={datosCV.fotoUrl?.startsWith('blob:') || datosCV.fotoUrl?.startsWith('http') ? datosCV.fotoUrl : `${API_BASE_URL}${datosCV.fotoUrl}`}
                                                         alt="Foto de perfil"
                                                         className="w-full h-full object-cover"
-                                                        onError={(e) => { e.target.style.display = 'none'; }}
                                                     />
                                                 ) : (
                                                     <User className="w-10 h-10 text-gray-300" />
@@ -757,7 +762,9 @@ export const HojaVida = () => {
                                     )}
 
                                     {categoriasSoportes.map((categoria) => {
-                                        const docsCategoria = resultadosIA.filter(d => d.tipoDocumento === categoria || (categoria === "Otros Soportes" && !categoriasSoportes.includes(d.tipoDocumento)));
+                                        const docsCategoria = resultadosIA
+                                        .filter(d => d.tipoDocumento === categoria || (categoria === "Otros Soportes" && !categoriasSoportes.includes(d.tipoDocumento)))
+                                        .sort((a, b) => (a.nombreArchivo || '').localeCompare(b.nombreArchivo || ''));
                                         const isExpanded = expandedCategories[categoria];
                                         const isDragging = draggingCategory === categoria;
 
@@ -795,7 +802,7 @@ export const HojaVida = () => {
                                                                         ) : (
                                                                             <div className="flex justify-between items-start">
                                                                                 <div className="flex flex-col gap-1 overflow-hidden pr-2">
-                                                                                    <div className="flex items-center gap-2"><FileText className="w-4 h-4 text-red-500 shrink-0" /><h4 className="font-semibold text-gray-700 text-xs truncate" title={doc.tipoDocumento}>{doc.tipoDocumento}</h4></div>
+                                                                                    <div className="flex items-center gap-2"><FileText className="w-4 h-4 text-red-500 shrink-0" /><h4 className="font-semibold text-gray-700 text-xs truncate" title={doc.nombreArchivo}>{doc.nombreArchivo}</h4></div>
                                                                                     {doc.estado === 'Rechazado' && <span className="text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded inline-block w-max tracking-wide">RECHAZADO</span>}
                                                                                 </div>
                                                                                 <button onClick={() => { setEditingDocId(doc.id); setEditDocValue(doc.tipoDocumento); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded shrink-0 transition-colors"><Edit2 className="w-3.5 h-3.5"/></button>

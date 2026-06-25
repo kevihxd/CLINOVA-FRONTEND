@@ -12,14 +12,6 @@ export const useBoard = () => {
             position: { x: 100, y: 100 }
         },
         {
-            id: '2',
-            title: 'Gestión de Calidad',
-            description: 'Auditorías y normativas ISO',
-            icon: ClipboardCheck,
-            color: 'bg-emerald-500',
-            position: { x: 450, y: 100 }
-        },
-        {
             id: '3',
             title: 'Procesos',
             description: 'Mapa de procesos y flujos',

@@ -19,7 +19,7 @@ export const NotFound = () => {
             <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-400/20 rounded-full blur-3xl mix-blend-multiply animate-pulse" style={{ animationDelay: '1s' }} />
 
             <div className="relative z-10 text-center px-4">
-                {/* 404 Animated Text */}
+                {/* 404 Animated Text */} 
                 <motion.h1
                     initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
