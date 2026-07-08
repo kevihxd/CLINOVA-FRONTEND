@@ -6,11 +6,13 @@ const MiPerfil = lazy(() => import('../modules/miCuenta/pages/MiPerfil').then(m 
 
 // --- TALENTO HUMANO ---
 const HojaVida = lazy(() => import('../modules/talentoHumano/pages/HojaVida').then(m => ({ default: m.HojaVida })));
+const ReporteUsuarios = lazy(() => import('../modules/talentoHumano/pages/ReporteUsuarios').then(m => ({ default: m.ReporteUsuarios })));
 const Organigrama = lazy(() => import('../modules/talentoHumano/pages/Organigrama').then(m => ({ default: m.Organigrama })));
 const VerDetalleCargo = lazy(() => import('../modules/talentoHumano/pages/VerDetalleCargo').then(m => ({ default: m.VerDetalleCargo })));
 const TipoDocumento = lazy(() => import('../modules/talentoHumano/pages/TipoDocumento').then(m => ({ default: m.TipoDocumento })));
 const Incapacidades = lazy(() => import('../modules/talentoHumano/pages/Incapacidades').then(m => ({ default: m.Incapacidades })));
 const GestionCursos = lazy(() => import('../modules/talentoHumano/pages/GestionCursos').then(m => ({ default: m.GestionCursos })));
+const ReporteSemaforizacion = lazy(() => import('../modules/talentoHumano/pages/ReporteSemaforizacion').then(m => ({ default: m.ReporteSemaforizacion })));
 
 // --- PROCESOS ---
 const MapaProcesos = lazy(() => import('../modules/procesos/pages/MapaProcesos').then(m => ({ default: m.MapaProcesos })));
@@ -43,12 +45,19 @@ const CrearActa = lazy(() => import('../modules/actasInformes/pages/CrearActa').
 const ActaDetalle = lazy(() => import('../modules/actasInformes/pages/ActaDetalle').then(m => ({ default: m.ActaDetalle })));
 const Informes = lazy(() => import('../modules/actasInformes/pages/Informes').then(m => ({ default: m.Informes })));
 
+// --- CONTEXTO DE LA ORGANIZACIÓN ---
+const AnalisisList = lazy(() => import('../modules/contexto/pages/AnalisisList').then(m => ({ default: m.AnalisisList })));
+const PartesList = lazy(() => import('../modules/contexto/pages/PartesList').then(m => ({ default: m.PartesList })));
+const RequisitosList = lazy(() => import('../modules/contexto/pages/RequisitosList').then(m => ({ default: m.RequisitosList })));
+
 export const ROUTES = {
   MI_CUENTA: {
     MI_PERFIL: { path: '/miCuenta/mi-perfil', title: 'Mi Perfil', element: <MiPerfil /> },
   },
   TALENTO_HUMANO: {
     HOJA_VIDA: { path: '/talentoHumano/hoja-de-vida', title: 'Hoja de Vida', element: <HojaVida /> },
+    REPORTE_ESTADOS: { path: '/talentoHumano/reporte-estados', title: 'Reporte de Estados', element: <ReporteUsuarios /> },
+    REPORTE_SEMAFORIZACION: { path: '/talentoHumano/reporte-semaforizacion', title: 'Semaforización', element: <ReporteSemaforizacion /> },
     ORGANIGRAMA: { path: '/talentoHumano/organigrama', title: 'Organigrama', element: <Organigrama /> },
     VER_DETALLE: { path: '/talentoHumano/perfiles-cargo/:id', title: 'Detalle de Cargo', element: <VerDetalleCargo /> },
     TIPO_DOCUMENTO: { path: '/talentoHumano/tipo-documento', title: 'Tipo de Documento', element: <TipoDocumento /> },
@@ -88,4 +97,9 @@ export const ROUTES = {
     ACTA_DETALLE: { path: '/actas-informes/acta/:id', title: 'Detalle de Acta', element: <ActaDetalle /> },
     INFORMES: { path: '/actas-informes/informes', title: 'Informes', element: <Informes /> }
   },
+  CONTEXTO: {
+    ANALISIS: { path: '/contexto/analisis', title: 'Análisis de Contexto', element: <AnalisisList /> },
+    PARTES: { path: '/contexto/partes', title: 'Partes Interesadas', element: <PartesList /> },
+    REQUISITOS: { path: '/contexto/requisitos', title: 'Requisitos Legales', element: <RequisitosList /> }
+  }
 };

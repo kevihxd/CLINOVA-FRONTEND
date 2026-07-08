@@ -173,7 +173,7 @@ const PrintableActa = ({ acta }) => {
                         <div style={{ textAlign: 'center', fontSize: '8.5pt' }}>
                             <div><strong>ID:</strong> {acta.id}</div>
                             <div><strong>Nombre:</strong> {acta.titulo}</div>
-                            <div><strong>Código:</strong> ACT-{acta.id}</div>
+                            <div style={{ fontSize: '11pt', marginTop: '3pt' }}><strong>Código:</strong> ACT-{acta.id}</div>
                         </div>
                     </div>
                 </div>

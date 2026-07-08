@@ -1,4 +1,4 @@
-import { Bell, LogOut } from 'lucide-react';
+import { Bell, LogOut, ChevronLeft } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { UserProfile } from './UserProfile';
@@ -59,17 +59,70 @@ export const Navbar = () => {
     const nombreUsuario = getDisplayName();
     const rolUsuario = getDisplayRole();
 
+    // Detect if we can go back (not on root or dashboard)
+    const isDashboard = location.pathname === '/dashboard' || location.pathname === '/';
+    const canGoBack = !isDashboard;
+
+    // Build a human-readable page title from the current path
+    const getPageTitle = () => {
+        const segments = location.pathname.split('/').filter(Boolean);
+        if (segments.length === 0 || segments[0] === 'dashboard') return '';
+        const labels = {
+            'talentoHumano': 'Talento Humano', 'procesos': 'Procesos', 'calidad': 'Calidad',
+            'configuracion': 'Configuración', 'actas': 'Actas e Informes', 'contexto': 'Contexto',
+            'hoja-de-vida': 'Hoja de Vida', 'organigrama': 'Organigrama', 'perfiles-cargo': 'Perfiles de Cargo',
+            'tipo-documento': 'Tipo Documento', 'incapacidades': 'Incapacidades', 'cursos': 'Cursos',
+            'mapa': 'Mapa de Procesos', 'tipos-documentos': 'Tipos de Documento',
+            'listado-unico': 'Listado Único', 'crear-documento': 'Crear Documento',
+            'solicitar-documento': 'Solicitar Documento', 'revision-documento': 'Revisión',
+            'reportes': 'Reportes', 'papelera-reciclaje': 'Papelera', 'documentos-externos': 'Doc. Externos',
+            'diligenciar-formato': 'Diligenciar Formato', 'definiciones': 'Definiciones',
+            'analisis-contexto': 'Análisis del Contexto', 'partes-interesadas': 'Partes Interesadas',
+            'matriz-requisitos': 'Matriz Requisitos Legales', 'mi-perfil': 'Mi Perfil',
+            'usuarios': 'Usuarios', 'gestion-cargos': 'Gestión de Cargos',
+        };
+        return segments.map(s => labels[s] || s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())).join(' › ');
+    };
+
+    const pageTitle = getPageTitle();
+
     return (
         <nav className="h-20 w-full bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] px-6 md:px-8 flex items-center justify-between z-50 fixed top-0 left-0 transition-all duration-300">
-            <div className="flex items-center gap-4 group cursor-pointer" onClick={() => handleNavigation('/dashboard')}>
-                <div className="relative">
-                    <div className="absolute -inset-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full opacity-0 group-hover:opacity-100 blur-lg transition-opacity duration-300" />
-                    <img src={logo} alt="Logo" className="relative h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105" />
+            {/* Left: Logo + Back Button */}
+            <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4 group cursor-pointer" onClick={() => handleNavigation('/dashboard')}>
+                    <div className="relative">
+                        <div className="absolute -inset-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full opacity-0 group-hover:opacity-100 blur-lg transition-opacity duration-300" />
+                        <img src={logo} alt="Logo" className="relative h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105" />
+                    </div>
+                    <div className="hidden md:flex flex-col">
+                        <span className="font-bold text-lg text-slate-800 tracking-tight leading-none group-hover:text-blue-600 transition-colors">Clinova</span>
+                        <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Gestión Documental</span>
+                    </div>
                 </div>
-                <div className="hidden md:flex flex-col">
-                    <span className="font-bold text-lg text-slate-800 tracking-tight leading-none group-hover:text-blue-600 transition-colors">Clinova</span>
-                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Gestión Documental</span>
-                </div>
+
+                {/* Back button + page title */}
+                {canGoBack && (
+                    <>
+                        <div className="h-8 w-px bg-slate-200 mx-1" />
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => navigate(-1)}
+                                title="Regresar"
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg transition-all duration-200 group/back"
+                            >
+                                <ChevronLeft className="w-4 h-4 transition-transform duration-200 group-hover/back:-translate-x-0.5" />
+                                <span className="hidden sm:inline">Regresar</span>
+                            </button>
+                            {pageTitle && (
+                                <span className="hidden lg:flex items-center gap-1.5 text-sm text-slate-500">
+                                    <span className="text-slate-300">/</span>
+                                    <span className="font-medium text-slate-700 max-w-[300px] truncate">{pageTitle}</span>
+                                </span>
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
 
             <div className="flex items-center gap-3 md:gap-6">

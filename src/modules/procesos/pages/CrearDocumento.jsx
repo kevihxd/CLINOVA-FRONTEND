@@ -206,10 +206,12 @@ export const CrearDocumentoForm = () => {
         data.append('plantilla', usaPlantilla);
         data.append('estado', 'EN REVISIÓN');
         
-        if (archivoPdf) {
-            data.append('archivo', archivoPdf);
-        } else if (archivoOriginal) {
+        if (archivoOriginal) {
             data.append('archivo', archivoOriginal);
+        }
+        
+        if (archivoPdf) {
+            data.append('archivoPdf', archivoPdf);
         }
 
         try {

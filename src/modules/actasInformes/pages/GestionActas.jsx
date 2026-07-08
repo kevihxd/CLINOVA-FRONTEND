@@ -228,7 +228,7 @@ export const GestionActas = () => {
                                     <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">No se encontraron actas registradas.</td></tr>
                                 ) : filteredActas.map((acta) => (
                                     <tr key={acta.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 font-mono text-xs text-gray-500">ACT-{acta.id}</td>
+                                        <td className="px-6 py-4 font-mono text-sm font-bold text-gray-700">ACT-{acta.id}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <FileText className="w-4 h-4 text-gray-400 shrink-0" />

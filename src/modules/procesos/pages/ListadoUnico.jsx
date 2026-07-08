@@ -3,6 +3,7 @@ import { Search, FileSpreadsheet, Eye, Edit2, Trash2, Download, X, FileText, Che
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useNavigate } from 'react-router-dom';
 import http from '../../../services/httpClient';
+import { API_BASE_URL } from '../../../config/api';
 import { useAlert } from '../../../providers/AlertProvider';
 import { useAuth } from '../../../providers/AuthProvider';
 import { TrazabilidadPanel } from '../../../components/TrazabilidadPanel';
@@ -339,10 +340,17 @@ const EditarDocumentoModal = ({ doc, onClose, onSaved, tiposDocumento, cargos, s
     );
 };
 
-const SortArrows = () => (
-    <div className="inline-flex flex-col ml-1 opacity-50">
-        <svg className="w-2 h-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 15l-6-6-6 6" /></svg>
-        <svg className="w-2 h-2 -mt-[2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M6 9l6 6 6-6" /></svg>
+// Extract leading number from a code/name string for numeric sort
+const extractNum = (s) => {
+    if (!s) return Infinity;
+    const m = String(s).match(/^\d+/);
+    return m ? parseInt(m[0], 10) : Infinity;
+};
+
+const SortIndicator = ({ field, sortField, sortDir }) => (
+    <div className="inline-flex flex-col ml-1">
+        <svg className={`w-2 h-2 ${sortField === field && sortDir === 'asc' ? 'opacity-100 text-blue-500' : 'opacity-30'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 15l-6-6-6 6" /></svg>
+        <svg className={`w-2 h-2 -mt-[2px] ${sortField === field && sortDir === 'desc' ? 'opacity-100 text-blue-500' : 'opacity-30'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M6 9l6 6 6-6" /></svg>
     </div>
 );
 
@@ -374,7 +382,11 @@ export const ListadoUnico = () => {
 
     const [selectedDoc, setSelectedDoc] = useState(null);       // trazabilidad
     const [historialDoc, setHistorialDoc] = useState([]);
+    const [controlCambiosDoc, setControlCambiosDoc] = useState([]);
     const [loadingHistorial, setLoadingHistorial] = useState(false);
+
+    const [sortField, setSortField] = useState('codigo');        // ordenamiento
+    const [sortDir, setSortDir] = useState('asc');
 
     const [editDoc, setEditDoc] = useState(null);               // edición
 
@@ -408,14 +420,36 @@ export const ListadoUnico = () => {
         } catch (err) { console.warn('Error silenciado:', err?.message); }
     };
 
+    const toggleSort = (field) => {
+        if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        else { setSortField(field); setSortDir('asc'); }
+    };
+
     const abrirHistorial = async (doc) => {
         setSelectedDoc(doc);
         setHistorialDoc([]);
+        setControlCambiosDoc([]);
         setLoadingHistorial(true);
         try {
             const res = await http.get(`/documentos/${doc.id}/historial`);
             const data = res?.data?.data || res?.data || res || [];
-            setHistorialDoc(Array.isArray(data) ? data : []);
+            const allLogs = Array.isArray(data) ? data : [];
+            // Separate control de cambios (version entries) from action logs
+            setControlCambiosDoc(allLogs
+                .filter(l => l.accion === 'CREACION_VERSION')
+                .sort((a, b) => {
+                    const va = parseInt((a.descripcion || '').match(/Versi[oó]n\s*(\d+)/i)?.[1] || '0');
+                    const vb = parseInt((b.descripcion || '').match(/Versi[oó]n\s*(\d+)/i)?.[1] || '0');
+                    return va - vb;
+                })
+                .map(l => ({
+                    version: (l.descripcion || '').match(/Versi[oó]n\s*(\d+)/i)?.[1] || '?',
+                    descripcion: (l.descripcion || '').replace(/^Versi[oó]n\s*\d+\s*[—-]?\s*/i, '').trim() || 'Sin descripción',
+                    fecha: l.fecha,
+                    usuario: l.usuario
+                }))
+            );
+            setHistorialDoc(allLogs.filter(l => l.accion !== 'CREACION_VERSION'));
         } catch (err) { console.warn('Error silenciado:', err?.message); setHistorialDoc([]); }
         finally { setLoadingHistorial(false); }
     };
@@ -438,22 +472,35 @@ export const ListadoUnico = () => {
         } catch (err) { console.warn('Error silenciado:', err?.message); }
     };
 
-    const handleDownload = async (doc) => {
+    const handleDownload = async (doc, tipo = null) => {
         if (!doc.rutaArchivoLocal || doc.rutaArchivoLocal === 'SIN_ARCHIVO') {
             showAlert({ message: 'Este documento no tiene un archivo físico.', status: 'warning' });
             return;
         }
         try {
-            const blob = await http.get(`/documentos/descargar/${doc.id}`, { responseType: 'blob' });
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const url = `${API_BASE_URL}/api/v1/documentos/descargar/${doc.id}${tipo ? `?tipo=${tipo}` : ''}`;
+            
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    const errText = await response.text();
+                    try { showAlert({ message: JSON.parse(errText).message || 'Archivo no encontrado', status: 'error' }); }
+                    catch { showAlert({ message: 'El archivo no se encontró.', status: 'error' }); }
+                } else {
+                    throw new Error('Error al descargar');
+                }
+                return;
+            }
+            
+            const blob = await response.blob();
             window.open(window.URL.createObjectURL(blob), '_blank');
         } catch (error) {
-            if (error.response?.data instanceof Blob) {
-                const text = await error.response.data.text();
-                try { showAlert({ message: JSON.parse(text).message || 'Archivo no encontrado', status: 'error' }); }
-                catch { showAlert({ message: 'El archivo PDF no se encontró.', status: 'error' }); }
-            } else {
-                showAlert({ message: 'Error de red al descargar el documento.', status: 'error' });
-            }
+            console.error(error);
+            showAlert({ message: 'Error de red al descargar el documento.', status: 'error' });
         }
     };
 
@@ -475,7 +522,7 @@ export const ListadoUnico = () => {
     ], []);
 
     const filtrados = useMemo(() => {
-        return documentos.filter(doc => {
+        const filtered = documentos.filter(doc => {
             const t = debouncedSearchTerm.toLowerCase();
             const matchSearch = (doc.nombre || '').toLowerCase().includes(t) || (doc.codigo || '').toLowerCase().includes(t);
             const matchSede = filtroSede === 'Todos' || doc.sede === filtroSede;
@@ -490,7 +537,27 @@ export const ListadoUnico = () => {
                 : false;
             return matchSearch && matchSede && matchProceso && matchTipo && matchTab;
         });
-    }, [documentos, debouncedSearchTerm, filtroSede, filtroProceso, filtroTipo, activeTab]);
+
+        // Sort
+        return [...filtered].sort((a, b) => {
+            let va, vb;
+            if (sortField === 'codigo') {
+                // Numeric sort: extract leading number from codigo or nombre
+                va = extractNum(a.codigo) !== Infinity ? extractNum(a.codigo) : extractNum(a.nombre);
+                vb = extractNum(b.codigo) !== Infinity ? extractNum(b.codigo) : extractNum(b.nombre);
+            } else if (sortField === 'id') {
+                va = a.id; vb = b.id;
+            } else if (sortField === 'version') {
+                va = parseFloat(a.version || '0'); vb = parseFloat(b.version || '0');
+            } else {
+                va = String(a[sortField] || '').toLowerCase();
+                vb = String(b[sortField] || '').toLowerCase();
+            }
+            if (va < vb) return sortDir === 'asc' ? -1 : 1;
+            if (va > vb) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [documentos, debouncedSearchTerm, filtroSede, filtroProceso, filtroTipo, activeTab, sortField, sortDir]);
 
     return (
         <div className="min-h-screen bg-slate-50 p-4 md:p-6 font-sans">
@@ -589,9 +656,26 @@ export const ListadoUnico = () => {
                         <table className="w-full text-left border-collapse whitespace-nowrap">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-700 font-bold">
-                                    {['Id','Código','Versión','Nombre','Tipo','Método de creación','Proceso','Normas','Sede','Días para revisión','Implementación'].map(h => (
-                                        <th key={h} className="px-3 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-100">
-                                            <div className="flex items-center justify-between">{h} <SortArrows /></div>
+                                    {[
+                                        { label: 'Id',                 field: 'id' },
+                                        { label: 'Código',             field: 'codigo' },
+                                        { label: 'Versión',            field: 'version' },
+                                        { label: 'Nombre',             field: 'nombre' },
+                                        { label: 'Tipo',               field: 'tipo' },
+                                        { label: 'Método de creación', field: 'metodoCreacion' },
+                                        { label: 'Proceso',            field: 'proceso' },
+                                        { label: 'Normas',             field: 'normas' },
+                                        { label: 'Sede',               field: 'sede' },
+                                        { label: 'Días para revisión', field: 'mesesRevision' },
+                                        { label: 'Implementación',     field: 'fechaAprobacion' },
+                                        { label: 'Estado',             field: 'estado' },
+                                    ].map(({ label, field }) => (
+                                        <th key={field} onClick={() => toggleSort(field)}
+                                            className="px-3 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-blue-50 select-none">
+                                            <div className="flex items-center justify-between gap-1">
+                                                {label}
+                                                <SortIndicator field={field} sortField={sortField} sortDir={sortDir} />
+                                            </div>
                                         </th>
                                     ))}
                                     <th className="px-3 py-2.5 text-center w-36">Acciones</th>
@@ -611,10 +695,20 @@ export const ListadoUnico = () => {
                                         <td className="px-3 py-2 border-r border-slate-200">{doc.proceso}</td>
                                         <td className="px-3 py-2 border-r border-slate-200 text-[11px] truncate max-w-[150px]" title={doc.normas}>{doc.normas || ''}</td>
                                         <td className="px-3 py-2 border-r border-slate-200">{doc.sede}</td>
-                                        <td className="px-3 py-2 border-r border-slate-200 text-center">{doc.mesesRevision ? `Faltan ${doc.mesesRevision * 30} dias` : ''}</td>
+                                        <td className="px-3 py-2 border-r border-slate-200 text-center">
+                                            {doc.diasFaltantes !== undefined && doc.diasFaltantes !== null ? (
+                                                <span className={doc.diasFaltantes < 0 ? 'text-red-500 font-bold' : doc.diasFaltantes <= 30 ? 'text-amber-500 font-bold' : 'text-emerald-600 font-bold'}>
+                                                    {doc.diasFaltantes < 0 ? `Vencido hace ${Math.abs(doc.diasFaltantes)} días` : `Faltan ${doc.diasFaltantes} días`}
+                                                </span>
+                                            ) : ''}
+                                        </td>
+                                        <td className="px-3 py-2 border-r border-slate-200 text-center font-medium">{doc.fechaAprobacion || 'N/A'}</td>
                                         <td className="px-3 py-2 border-r border-slate-200 text-center">
                                             {doc.estado && (
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border shadow-sm tracking-wide ${doc.estado === 'VIGENTE' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border shadow-sm tracking-wide 
+                                                    ${doc.estado === 'VIGENTE' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
+                                                    : doc.estado === 'VENCIDO' ? 'bg-red-50 text-red-600 border-red-200'
+                                                    : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
                                                     {doc.estado}
                                                 </span>
                                             )}
@@ -624,7 +718,7 @@ export const ListadoUnico = () => {
                                                 {isAdmin && doc.estado === 'EN REVISIÓN' && (
                                                     <button onClick={() => aprobarDoc(doc.id)} className="p-1 text-emerald-500 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded" title="Dar Visto Bueno"><CheckCircle size={14} /></button>
                                                 )}
-                                                <button onClick={() => handleDownload(doc)} className="p-1 text-slate-400 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-slate-200 rounded" title="Ver documento"><Eye size={14} /></button>
+                                                <button onClick={() => handleDownload(doc, 'pdf')} className="p-1 text-slate-400 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 border border-slate-200 rounded" title="Ver documento"><Eye size={14} /></button>
                                                 <button onClick={() => abrirHistorial(doc)} className="p-1 text-slate-400 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200 rounded" title="Trazabilidad"><History size={14} /></button>
                                                 <button onClick={() => setEditDoc(doc)} className="p-1 text-slate-400 hover:text-amber-600 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded" title="Editar"><Edit2 size={14} /></button>
                                                 <button onClick={() => eliminarDocumento(doc.id)} className="p-1 text-slate-400 hover:text-red-600 bg-slate-100 hover:bg-red-50 border border-slate-200 rounded" title="Eliminar"><Trash2 size={14} /></button>
@@ -701,17 +795,22 @@ export const ListadoUnico = () => {
             {selectedDoc && (
                 <div className="fixed inset-0 z-50 flex justify-end">
                     <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedDoc(null)} />
-                    <div className="relative w-full max-w-xl bg-slate-50 h-full shadow-2xl flex flex-col overflow-hidden">
+                    <div className="relative w-full max-w-2xl bg-slate-50 h-full shadow-2xl flex flex-col overflow-hidden">
                         <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0">
                             <div>
-                                <p className="text-xs text-indigo-500 font-bold uppercase tracking-wider">Trazabilidad</p>
-                                <h3 className="font-bold text-slate-800 text-sm mt-0.5 truncate max-w-xs" title={selectedDoc.nombre}>{selectedDoc.nombre}</h3>
-                                <p className="text-xs text-slate-400">{selectedDoc.codigo} · v{selectedDoc.version || '1'}</p>
+                                <p className="text-sm text-indigo-600 font-bold uppercase tracking-wider">Trazabilidad del Documento</p>
+                                <h3 className="font-bold text-slate-800 text-base mt-0.5 truncate max-w-lg" title={selectedDoc.nombre}>{selectedDoc.nombre}</h3>
+                                <p className="text-sm text-slate-400">{selectedDoc.codigo} · v{selectedDoc.version || '1'} · {selectedDoc.proceso}</p>
                             </div>
-                            <button onClick={() => setSelectedDoc(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"><X size={18} /></button>
+                            <button onClick={() => setSelectedDoc(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"><X size={20} /></button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4">
-                            <TrazabilidadPanel logs={historialDoc} loading={loadingHistorial} />
+                        <div className="flex-1 overflow-y-auto p-5">
+                            <TrazabilidadPanel
+                                logs={historialDoc}
+                                loading={loadingHistorial}
+                                controlCambios={controlCambiosDoc}
+                                titulo={`Trazabilidad — ${selectedDoc.nombre}`}
+                            />
                         </div>
                     </div>
                 </div>

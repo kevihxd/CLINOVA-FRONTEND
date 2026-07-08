@@ -3,6 +3,8 @@ import { CalidadOptions } from '../../calidad/components/CalidadOptions';
 import { ConfiguracionOptions } from '../../configuracion/components/ConfiguracionOptions';
 import { ProcesosOptions } from '../../procesos/components/ProcesosOptions';
 import { ActasInformesOptions } from '../../actasInformes/components/ActasInformesOptions';
+import { ContextoOptions } from '../../contexto/components/ContextoOptions';
+
 
 export const OPTIONS_MAP = {
     '1': TalentoHumanoOptions,
@@ -11,4 +13,5 @@ export const OPTIONS_MAP = {
     '5': ConfiguracionOptions,
     '6': ProcesosOptions, 
     '7': ActasInformesOptions,
+    '8': ContextoOptions,
 };

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, ClipboardCheck, Settings, FileText, BarChart3, ShieldCheck, FileSignature } from 'lucide-react';
+import { Users, ClipboardCheck, Settings, FileText, BarChart3, ShieldCheck, FileSignature, Building2 } from 'lucide-react';
 
 export const useBoard = () => {
     const [cards, setCards] = useState([
@@ -34,6 +34,14 @@ export const useBoard = () => {
             icon: FileSignature,
             color: 'bg-purple-500',
             position: { x: 450, y: 600 }
+        },
+        {
+            id: '8',
+            title: 'Contexto de la organización',
+            description: 'Gestión de contexto, partes interesadas y requisitos legales',
+            icon: Building2,
+            color: 'bg-orange-500',
+            position: { x: 450, y: 100 }
         }
     ]);
 

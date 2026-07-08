@@ -5,6 +5,7 @@ import { Users, Star, Settings, FileText, ClipboardList, Shield, LayoutDashboard
 import { motion } from 'framer-motion';
 import { OPTIONS_MAP } from '../constants/dashboardMaps';
 import { useAuth } from '../../../providers/AuthProvider';
+import { DocumentSearchBar } from '../components/DocumentSearchBar';
 
 const getModuleStyle = (title) => {
     const normalize = title?.toLowerCase() || '';
@@ -81,6 +82,8 @@ const Dashboard = () => {
                         </p>
                     </div>
                 </div>
+
+                <DocumentSearchBar />
 
                 <motion.div 
                     variants={containerVariants}

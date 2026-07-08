@@ -36,48 +36,7 @@ const getActaEstadoStyle = (estado) => {
     return 'bg-blue-100 text-blue-700 border-blue-200';
 };
 
-const getHistorialCambios = (doc) => {
-    if (!doc) return [];
-    const currentVersion = parseInt(doc.version) || 1;
-    const list = [];
-    const usuarioElabora = doc.elabora?.split(',')[0]?.trim() || 'Administrador de Calidad';
-
-    if (currentVersion === 1) {
-        list.push({
-            version: '1',
-            fecha: doc.fechaElaboracion || '20/05/2026',
-            usuario: usuarioElabora,
-            comentario: doc.alcance || 'Creación inicial y publicación del documento en el sistema de gestión.'
-        });
-    } else if (currentVersion === 2) {
-        list.push({
-            version: '1',
-            fecha: '01/10/2023',
-            usuario: 'Carlos Humberto Barrera Rozo',
-            comentario: 'Creación inicial del documento.'
-        });
-        list.push({
-            version: '2',
-            fecha: doc.fechaRevision || doc.fechaElaboracion || '20/05/2026',
-            usuario: usuarioElabora,
-            comentario: doc.alcance || 'Actualizacion de documento, de acuerdo a revision y actualizacion masiva de documentos'
-        });
-    } else {
-        list.push({
-            version: String(currentVersion - 1),
-            fecha: '01/10/2023',
-            usuario: 'Carlos Humberto Barrera Rozo',
-            comentario: 'Actualizacion de documento, de acuerdo a revision y actualizacion masiva de documentos'
-        });
-        list.push({
-            version: String(currentVersion),
-            fecha: doc.fechaAprobacion || doc.fechaRevision || doc.fechaElaboracion || '20/05/2026',
-            usuario: usuarioElabora,
-            comentario: doc.alcance || 'La estructuración de este formato tiene como finalidad fortalecer las estrategias de socialización, aprendizaje organizacional y cultura de seguridad del paciente, mediante la divulgación periódica de eventos, incidentes, causas identificadas, barreras de seguridad implementadas y recomendaciones orientadas a la prevención de la recurrencia de sucesos asociados a la atención en salud. Así mismo, este boletín permitirá estandarizar la presentación y difusión de las lecciones aprendidas derivadas de los análisis de eventos adversos e incidentes reportados en la institución, favoreciendo el fortalecimiento de prácticas seguras y la gestión del riesgo institucional.'
-        });
-    }
-    return list;
-};
+// Historial de cambios removido (ahora se carga dinámicamente desde el servidor)
 
 export const MapaProcesos = () => {
     const navigate = useNavigate();
@@ -94,6 +53,7 @@ export const MapaProcesos = () => {
     const [selectedDocument, setSelectedDocument] = useState(null);
     const [pdfUrl, setPdfUrl] = useState('');
     const [loadingPdf, setLoadingPdf] = useState(false);
+    const [documentHistory, setDocumentHistory] = useState([]);
 
     const openDocumentModal = async (doc, e) => {
         if (e) e.stopPropagation();
@@ -101,8 +61,12 @@ export const MapaProcesos = () => {
         setSelectedDocument(doc);
         setPdfUrl('');
         try {
+            const histRes = await http.get(`/documentos/${doc.id}/historial`).catch(() => ({ data: [] }));
+            setDocumentHistory(histRes.data || []);
+            
             if (doc.rutaArchivoLocal && doc.rutaArchivoLocal !== 'SIN_ARCHIVO') {
-                const blob = await http.get(`/documentos/descargar/${doc.id}`, { responseType: 'blob' });
+                const rawBlob = await http.get(`/documentos/descargar/${doc.id}?tipo=pdf`, { responseType: 'blob' });
+                const blob = new Blob([rawBlob], { type: 'application/pdf' });
                 const url = window.URL.createObjectURL(blob);
                 setPdfUrl(url);
             }
@@ -119,6 +83,7 @@ export const MapaProcesos = () => {
         }
         setSelectedDocument(null);
         setPdfUrl('');
+        setDocumentHistory([]);
     };
 
     const procesos = [
@@ -180,7 +145,13 @@ export const MapaProcesos = () => {
         try {
             const blob = await http.get(`/documentos/descargar/${doc.id}`, { responseType: 'blob' });
             const url = window.URL.createObjectURL(blob);
-            window.open(url, '_blank');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = doc.rutaArchivoLocal || `documento_${doc.id}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => window.URL.revokeObjectURL(url), 1000);
         } catch (error) {
             if (error.response && error.response.data instanceof Blob) {
                 const text = await error.response.data.text();
@@ -510,21 +481,29 @@ export const MapaProcesos = () => {
                                         <table className="w-full text-left border-collapse text-[11px] bg-white">
                                             <thead>
                                                 <tr className="bg-[#f0f2f5] border-b border-[#d1d5db] text-[#444] font-bold">
-                                                    <th className="px-4 py-2 border-r border-[#d1d5db] w-20 text-center">Versión</th>
-                                                    <th className="px-4 py-2 border-r border-[#d1d5db] w-32 text-center">Fecha</th>
+                                                    <th className="px-4 py-2 border-r border-[#d1d5db] w-32 text-center">Acción</th>
+                                                    <th className="px-4 py-2 border-r border-[#d1d5db] w-40 text-center">Fecha</th>
                                                     <th className="px-4 py-2 border-r border-[#d1d5db] w-48">Usuario</th>
-                                                    <th className="px-4 py-2">Comentario</th>
+                                                    <th className="px-4 py-2">Detalle</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {getHistorialCambios(selectedDocument).map((row, idx) => (
-                                                    <tr key={idx} className="border-b border-[#e5e7eb] last:border-0 hover:bg-slate-50 text-slate-600">
-                                                        <td className="px-4 py-3 border-r border-[#e5e7eb] text-center font-bold">{row.version}</td>
-                                                        <td className="px-4 py-3 border-r border-[#e5e7eb] text-center">{row.fecha}</td>
-                                                        <td className="px-4 py-3 border-r border-[#e5e7eb] font-medium">{row.usuario}</td>
-                                                        <td className="px-4 py-3 leading-relaxed text-justify">{row.comentario}</td>
+                                                {documentHistory.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan="4" className="px-4 py-6 text-center text-gray-500 italic">No hay historial registrado en el sistema.</td>
                                                     </tr>
-                                                ))}
+                                                ) : (
+                                                    documentHistory.map((row, idx) => (
+                                                        <tr key={idx} className="border-b border-[#e5e7eb] last:border-0 hover:bg-slate-50 text-slate-600">
+                                                            <td className="px-4 py-3 border-r border-[#e5e7eb] text-center font-bold text-xs uppercase">{row.accion}</td>
+                                                            <td className="px-4 py-3 border-r border-[#e5e7eb] text-center whitespace-nowrap">
+                                                                {row.fecha ? new Date(row.fecha).toLocaleString() : '—'}
+                                                            </td>
+                                                            <td className="px-4 py-3 border-r border-[#e5e7eb] font-medium">{row.usuario}</td>
+                                                            <td className="px-4 py-3 leading-relaxed text-justify">{row.descripcion}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>

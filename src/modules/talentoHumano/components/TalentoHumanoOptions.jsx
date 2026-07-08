@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routes.const';
-import { FileText, Users, HeartPulse, GraduationCap } from 'lucide-react';
+import { FileText, Users, HeartPulse, GraduationCap, BarChart, Activity } from 'lucide-react';
 import { useAuth } from '../../../providers/AuthProvider';
 
 export const TalentoHumanoOptions = ({ onClose }) => {
@@ -13,7 +13,8 @@ export const TalentoHumanoOptions = ({ onClose }) => {
     const isAdminOrHR =
         authorities.includes('ROLE_ADMIN') || authorities.includes('ADMIN') ||
         authorities.includes('ROLE_HR_MANAGER') || authorities.includes('HR_MANAGER') ||
-        roleString.includes('ADMIN') || roleString.includes('HR_MANAGER');
+        authorities.includes('ROLE_LIDER_DE_PROCESO') || authorities.includes('LIDER_DE_PROCESO') ||
+        roleString.includes('ADMIN') || roleString.includes('HR_MANAGER') || roleString.includes('LIDER_DE_PROCESO');
 
     const handleNavigation = (path) => {
         navigate(path);
@@ -94,9 +95,46 @@ export const TalentoHumanoOptions = ({ onClose }) => {
                             </p>
                         </div>
                     </button>
+
+                    <button
+                        onClick={() => handleNavigation(ROUTES.TALENTO_HUMANO.REPORTE_ESTADOS.path)}
+                        className="w-full flex items-center p-4 bg-white border border-slate-200 rounded-xl hover:border-green-300 hover:shadow-md transition-all group text-left"
+                    >
+                        <div className="p-3 bg-green-50 rounded-lg text-green-600 mr-4 group-hover:scale-110 transition-transform">
+                            <BarChart size={24} strokeWidth={2} />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-bold text-slate-800 group-hover:text-green-600 transition-colors text-base">
+                                Reporte de Estados
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Consulta y exporta informes de usuarios activos/inactivos
+                            </p>
+                        </div>
+                    </button>
                 </>
             )}
 
+            {isAdminOrHR && (
+                <>
+                    <button
+                        onClick={() => handleNavigation(ROUTES.TALENTO_HUMANO.REPORTE_SEMAFORIZACION.path)}
+                        className="w-full flex items-center p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all group text-left"
+                    >
+                        <div className="p-3 bg-blue-50 rounded-lg text-blue-600 mr-4 group-hover:scale-110 transition-transform">
+                            <Activity size={24} strokeWidth={2} />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors text-base">
+                                Semaforización
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Control de vencimientos de contratos y cursos
+                            </p>
+                        </div>
+                    </button>
+                </>
+            )}
         </div>
     );
 };
