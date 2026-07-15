@@ -105,7 +105,7 @@ export const DocumentSearchBar = () => {
     };
 
     return (
-        <div ref={wrapperRef} className="relative w-full max-w-2xl mx-auto mb-8 z-50">
+        <div ref={wrapperRef} className="relative w-full z-50">
             <div className={`relative flex items-center w-full h-14 rounded-2xl bg-white transition-all duration-300 ${isOpen && query ? 'shadow-lg rounded-b-none border-b border-slate-100' : 'shadow-sm border border-slate-200 hover:border-indigo-300 hover:shadow-md'}`}>
                 <div className="pl-5 text-slate-400">
                     <Search size={22} strokeWidth={1.5} />

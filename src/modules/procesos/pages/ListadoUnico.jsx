@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, FileSpreadsheet, Eye, Edit2, Trash2, Download, X, FileText, CheckCircle, History, Save, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Search, FileSpreadsheet, Eye, Edit2, Trash2, Download, X, FileText, CheckCircle, History, Save, ArrowRight, ArrowLeft, Mail } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useNavigate } from 'react-router-dom';
 import http from '../../../services/httpClient';
@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../../../config/api';
 import { useAlert } from '../../../providers/AlertProvider';
 import { useAuth } from '../../../providers/AuthProvider';
 import { TrazabilidadPanel } from '../../../components/TrazabilidadPanel';
+import { SendEmailModal } from '../../../components/SendEmailModal';
 
 /* ─── DualListbox ──────────────────────────────────────────── */
 const DualListbox = ({ title, options = [], selectedOptions = [], onChange }) => {
@@ -390,6 +391,9 @@ export const ListadoUnico = () => {
 
     const [editDoc, setEditDoc] = useState(null);               // edición
 
+    const [selectedDocForEmail, setSelectedDocForEmail] = useState(null);  // correo
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+
     useEffect(() => { cargarDatos(); }, []);
 
     const cargarDatos = async () => {
@@ -723,6 +727,9 @@ export const ListadoUnico = () => {
                                                 <button onClick={() => setEditDoc(doc)} className="p-1 text-slate-400 hover:text-amber-600 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded" title="Editar"><Edit2 size={14} /></button>
                                                 <button onClick={() => eliminarDocumento(doc.id)} className="p-1 text-slate-400 hover:text-red-600 bg-slate-100 hover:bg-red-50 border border-slate-200 rounded" title="Eliminar"><Trash2 size={14} /></button>
                                                 <button onClick={() => handleDownload(doc)} className="p-1 text-slate-400 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 border border-slate-200 rounded" title="Descargar"><Download size={14} /></button>
+                                                {isAdmin && (
+                                                    <button onClick={() => { setSelectedDocForEmail(doc); setIsEmailModalOpen(true); }} className="p-1 text-slate-400 hover:text-cyan-600 bg-slate-100 hover:bg-cyan-50 border border-slate-200 rounded" title="Enviar por correo"><Mail size={14} /></button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -826,6 +833,17 @@ export const ListadoUnico = () => {
                     usuarios={usuarios}
                     onClose={() => setEditDoc(null)}
                     onSaved={() => { setEditDoc(null); cargarDatos(); }}
+                />
+            )}
+
+            {/* Modal: Email */}
+            {isEmailModalOpen && selectedDocForEmail && (
+                <SendEmailModal
+                    isOpen={isEmailModalOpen}
+                    onClose={() => { setIsEmailModalOpen(false); setSelectedDocForEmail(null); }}
+                    documentoId={selectedDocForEmail.id}
+                    fileName={selectedDocForEmail.nombre}
+                    docType="file"
                 />
             )}
         </div>

@@ -36,6 +36,7 @@ const TipoContrato = lazy(() => import('../modules/configuracion/pages/TipoContr
 const Usuarios = lazy(() => import('../modules/configuracion/pages/Usuarios').then(m => ({ default: m.Usuarios })));
 const GestionCargos = lazy(() => import('../modules/configuracion/pages/GestionCargos').then(m => ({ default: m.GestionCargos })));
 const AdministracionVacunas = lazy(() => import('../modules/configuracion/pages/AdministracionVacunas').then(m => ({ default: m.AdministracionVacunas })));
+const PlantillasCorreo = lazy(() => import('../modules/configuracion/pages/PlantillasCorreo').then(m => ({ default: m.PlantillasCorreo })));
 const GestionOpciones = lazy(() => import('../modules/configuracion/pages/GestionOpciones').then(m => ({ default: m.GestionOpciones })));
 
 // --- ACTAS E INFORMES ---
@@ -88,7 +89,8 @@ export const ROUTES = {
     CARGOS: { path: '/configuracion/cargos', title: 'Gestión de Cargos y Objetos', element: <GestionCargos /> },
     OPCIONES: { path: '/configuracion/opciones', title: 'Gestión de Opciones', element: <GestionOpciones /> },
     TIPO_CONTRATO: { path: '/configuracion/tipo-contrato', title: 'Gestión de Tipo Contrato', element: <TipoContrato title="Gestión de Tipo Contrato" /> },
-    VACUNAS: { path: '/configuracion/vacunas', title: 'Administración de Vacunas', element: <AdministracionVacunas /> }
+    VACUNAS: { path: '/configuracion/vacunas', title: 'Administración de Vacunas', element: <AdministracionVacunas /> },
+    PLANTILLAS_CORREO: { path: '/configuracion/plantillas-correo', title: 'Plantillas de Correo', element: <PlantillasCorreo /> }
   },
   ACTAS_INFORMES: {
     GESTION_ACTAS: { path: '/actas-informes/gestion', title: 'Gestión de Actas', element: <GestionActas /> },

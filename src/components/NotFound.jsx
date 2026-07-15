@@ -1,5 +1,6 @@
 import { Home, ArrowLeft, FileQuestion } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 export const NotFound = () => {
     const navigate = useNavigate();

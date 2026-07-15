@@ -1,7 +1,7 @@
 import React from 'react';
 import { useBoard } from '../hooks/useBoard';
 import { OptionSidebar } from '../components/OptionSidebar';
-import { Users, Star, Settings, FileText, ClipboardList, Shield, LayoutDashboard } from 'lucide-react';
+import { Users, Star, Settings, FileText, ClipboardList, Shield, LayoutDashboard, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { OPTIONS_MAP } from '../constants/dashboardMaps';
 import { useAuth } from '../../../providers/AuthProvider';
@@ -47,6 +47,11 @@ const Dashboard = () => {
     const allowedCards = cards.filter(card => {
         if (auditorFlag) return true;
         return card.title === 'Talento Humano';
+    }).sort((a, b) => {
+        // Mover "Actas e Informes" al final para que quede "abajito"
+        if (a.title?.toLowerCase().includes('actas')) return 1;
+        if (b.title?.toLowerCase().includes('actas')) return -1;
+        return 0;
     });
 
     const containerVariants = {
@@ -69,59 +74,72 @@ const Dashboard = () => {
                 style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '32px 32px' }}
             />
 
-            <div className="relative z-10 max-w-7xl mx-auto p-6 md:p-8 lg:p-10">
+            <div className={`relative z-10 w-full max-w-[100vw] mx-auto py-6 md:py-8 lg:py-10 pl-4 lg:pl-6 pr-4 lg:pr-10 transition-all duration-500 ${selectedModule ? 'xl:pr-[440px]' : ''}`}>
                 
-                <div className="flex items-center gap-4 mb-10">
-                    <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm text-indigo-600">
-                        <LayoutDashboard size={28} strokeWidth={1.5} />
+                <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 w-full mb-10">
+                    {/* LEFT COLUMN - SEARCH SIDEBAR */}
+                    <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 lg:sticky lg:top-28">
+                        <div className="mb-3 px-1">
+                            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Buscador Global</h2>
+                        </div>
+                        <div className="z-50 relative w-full">
+                            <DocumentSearchBar />
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Panel de Control</h1>
-                        <p className="text-slate-500 font-medium mt-1">
-                            ¡Hola, <span className="text-indigo-600 capitalize">{getDisplayName()}</span>! Selecciona un módulo para comenzar.
-                        </p>
-                    </div>
-                </div>
 
-                <DocumentSearchBar />
-
-                <motion.div 
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="show"
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                >
-                    {allowedCards.map((card) => {
-                        const style = getModuleStyle(card.title);
-                        const Icon = style.icon;
-
-                        return (
-                            <motion.button
-                                key={card.id}
-                                variants={itemVariants}
-                                whileHover={{ y: -4 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => selectModule(card.id)}
-                                className={`group flex flex-col items-start p-6 bg-white rounded-2xl border border-slate-200 shadow-sm transition-all duration-300 text-left cursor-pointer hover:shadow-lg ${style.border} ${style.shadow}`}
-                            >
-                                <div className={`p-4 rounded-xl ${style.bg} ${style.color} mb-5 group-hover:scale-110 transition-transform duration-300`}>
-                                    <Icon size={32} strokeWidth={1.5} />
-                                </div>
-                                
-                                <h3 className="text-lg font-bold text-slate-800 group-hover:text-slate-900 transition-colors w-full truncate">
-                                    {card.title}
-                                </h3>
-                                <p className="text-sm text-slate-500 mt-1.5 font-medium">
-                                    Gestión y administración
+                    {/* RIGHT COLUMN - MODULES */}
+                    <div className="flex-1 min-w-0 flex flex-col items-center xl:items-start">
+                        <div className="flex items-center justify-center xl:justify-start gap-4 mb-10 w-full max-w-[1200px]">
+                            <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm text-indigo-600">
+                                <LayoutDashboard size={28} strokeWidth={1.5} />
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Panel de Control</h1>
+                                <p className="text-slate-500 font-medium mt-1">
+                                    ¡Hola, <span className="text-indigo-600 capitalize">{getDisplayName()}</span>! Selecciona un módulo para comenzar.
                                 </p>
+                            </div>
+                        </div>
 
-                                <div className="mt-6 w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-                                    <div className={`h-full w-0 group-hover:w-full transition-all duration-500 ${style.bg.replace('bg-', 'bg-').replace('50', '500')}`} />
-                                </div>
-                            </motion.button>
-                        );
-                    })}
+                        <motion.div 
+                            variants={containerVariants}
+                            initial="hidden"
+                            animate="show"
+                            className="flex flex-wrap justify-center xl:justify-start gap-6 w-full max-w-[850px]"
+                        >
+                            {allowedCards.map((card) => {
+                                const style = getModuleStyle(card.title);
+                                const Icon = style.icon;
+
+                                return (
+                                    <motion.button
+                                        key={card.id}
+                                        variants={itemVariants}
+                                        whileHover={{ y: -4 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => selectModule(card.id)}
+                                        className={`group flex flex-col items-start p-6 bg-white rounded-2xl border border-slate-200 shadow-sm transition-all duration-300 text-left cursor-pointer hover:shadow-lg w-full sm:w-[260px] shrink-0 ${style.border} ${style.shadow}`}
+                                    >
+                                        <div className={`p-4 rounded-xl ${style.bg} ${style.color} mb-5 group-hover:scale-110 transition-transform duration-300`}>
+                                            <Icon size={32} strokeWidth={1.5} />
+                                        </div>
+                                        
+                                        <h3 className="text-lg font-bold text-slate-800 group-hover:text-slate-900 transition-colors w-full truncate">
+                                            {card.title}
+                                        </h3>
+                                        <p className="text-sm text-slate-500 mt-1.5 font-medium">
+                                            Gestión y administración
+                                        </p>
+
+                                        <div className="mt-6 w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className={`h-full w-0 group-hover:w-full transition-all duration-500 ${style.bg.replace('bg-', 'bg-').replace('50', '500')}`} />
+                                        </div>
+                                    </motion.button>
+                                );
+                            })}
                 </motion.div>
+                </div> {/* end right column */}
+                </div> {/* end row wrapper */}
             </div>
 
             <OptionSidebar

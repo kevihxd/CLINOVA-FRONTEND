@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Shield, Map, Briefcase, ChevronRight, Syringe, SlidersHorizontal } from 'lucide-react';
+import { Users, Shield, Map, Briefcase, ChevronRight, Syringe, SlidersHorizontal, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const CONFIGURACION_OPTIONS = [
@@ -44,6 +44,13 @@ export const CONFIGURACION_OPTIONS = [
         icon: SlidersHorizontal,
         color: 'text-amber-600',
         description: 'Edita las opciones de ARL, EPS, AFP, contratos y más'
+    },
+    {
+        title: 'Plantillas de Correo',
+        path: '/configuracion/plantillas-correo',
+        icon: Mail,
+        color: 'text-cyan-600',
+        description: 'Configuración de plantillas predefinidas para enviar correos'
     }
 ];
 
@@ -98,6 +105,14 @@ export const ConfiguracionOptions = ({ onClose }) => {
             color: 'text-amber-600',
             bgColor: 'bg-amber-50',
             description: 'Edita las opciones de ARL, EPS, AFP, contratos y más'
+        },
+        {
+            title: 'Plantillas de Correo',
+            path: '/configuracion/plantillas-correo',
+            icon: Mail,
+            color: 'text-cyan-600',
+            bgColor: 'bg-cyan-50',
+            description: 'Configuración de plantillas predefinidas para enviar correos'
         }
     ];
 
