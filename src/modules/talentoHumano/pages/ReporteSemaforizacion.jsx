@@ -9,7 +9,7 @@ import {
 import httpClient from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
 import { UploadSemaforizacionModal } from '../components/UploadSemaforizacionModal';
-import * as XLSX from 'xlsx';
+import { exportReportToExcel } from '../../../utils/excelExporter';
 
 // Definición de grupos y sus nombres asociados en la DB
 const GROUPS = {
@@ -110,7 +110,12 @@ export const ReporteSemaforizacion = () => {
         const courseSet = new Set();
 
         rawData.forEach((item) => {
-            // Solo agregar la columna si el curso aplica para al menos una persona en esta vista
+            // Hide inactive / retired users from semaforización report
+            const st = (item.estadoEmpleado || '').toUpperCase();
+            if (st.includes('INACTIVO') || st.includes('RETIRO') || st.includes('DESCARTA')) {
+                return;
+            }
+
             if (item.estadoCurso !== 'NO_APLICA') {
                 courseSet.add(item.cursoRequerido);
             }
@@ -183,35 +188,32 @@ export const ReporteSemaforizacion = () => {
     const handleExportExcel = () => {
         if (rows.length === 0) return;
 
-        const excelData = rows.map(row => {
-            const rowData = {
-                'Documento': row.documento,
-                'Colaborador': row.nombreCompleto,
-                'Cargo': row.cargo
-            };
+        const headers = ['Documento', 'Colaborador', 'Cargo', ...uniqueCourses];
+        const dataRows = rows.map(row => {
+            const rowValues = [
+                row.documento || '',
+                row.nombreCompleto || '',
+                row.cargo || 'N/A'
+            ];
 
             uniqueCourses.forEach(curso => {
                 const estado = row[`estado_${curso}`] || 'FALTANTE';
                 const fecha = row[`fecha_${curso}`] || 'N/A';
-                rowData[curso] = `${estado.replace('_', ' ')} (${fecha})`;
+                rowValues.push(`${estado.replace('_', ' ')} (${fecha})`);
             });
 
-            return rowData;
+            return rowValues;
         });
 
-        const worksheet = XLSX.utils.json_to_sheet(excelData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, `Semaforizacion_${filterGroup}`);
-        
-        const colWidths = [
-            { wch: 15 },
-            { wch: 35 },
-            { wch: 25 },
-            ...uniqueCourses.map(() => ({ wch: 25 }))
-        ];
-        worksheet['!cols'] = colWidths;
-
-        XLSX.writeFile(workbook, `Semaforizacion_${filterGroup}_${new Date().toISOString().slice(0,10)}.xlsx`);
+        exportReportToExcel({
+            title: 'REPORTE DE SEMAFORIZACIÓN DE CAPACITACIONES Y CURSOS OBLIGATORIOS',
+            subtitle: `Clinova IPS - Vista por Grupo: ${filterGroup}`,
+            sheetName: `Semaforizacion_${filterGroup}`,
+            filename: `Reporte_Semaforizacion_${filterGroup}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+            headers,
+            rows: dataRows,
+            themeColor: '3730A3' // Indigo
+        });
     };
 
     const baseColumns = [

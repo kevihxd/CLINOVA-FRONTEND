@@ -42,6 +42,14 @@ export const useBoard = () => {
             icon: Building2,
             color: 'bg-orange-500',
             position: { x: 450, y: 100 }
+        },
+        {
+            id: '9',
+            title: 'Hojas de Vida',
+            description: 'Gestión de Hojas de Vida de Nómina y Proveedores (OPS)',
+            icon: FileText,
+            color: 'bg-teal-600',
+            position: { x: 450, y: 350 }
         }
     ]);
 

@@ -16,4 +16,7 @@ export const UsuariosService = {
 
     delete: (id: number) =>
         http.delete(`/usuarios/${id}`),
+
+    deleteUser: (id: number) =>
+        http.delete(`/usuarios/${id}`),
 };

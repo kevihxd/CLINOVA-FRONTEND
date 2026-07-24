@@ -68,10 +68,15 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="w-full min-h-[calc(100vh-80px)] bg-slate-50/50 relative overflow-y-auto">
-            
-            <div className="absolute inset-0 w-full h-full opacity-[0.3] pointer-events-none"
-                style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '32px 32px' }}
+        <div className="w-full min-h-[calc(100vh-80px)] bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-indigo-50/50 relative overflow-hidden overflow-y-auto">
+            {/* Ambient Light Blue Glowing Orbs */}
+            <div className="absolute -top-40 -left-20 w-[550px] h-[550px] bg-blue-300/25 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-20 right-1/4 w-[450px] h-[450px] bg-sky-300/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-40 -right-20 w-[650px] h-[650px] bg-indigo-300/20 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Subtle Tech Grid Pattern */}
+            <div className="absolute inset-0 w-full h-full opacity-[0.4] pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(#93c5fd 1.2px, transparent 1.2px)', backgroundSize: '32px 32px' }}
             />
 
             <div className={`relative z-10 w-full max-w-[100vw] mx-auto py-6 md:py-8 lg:py-10 pl-4 lg:pl-6 pr-4 lg:pr-10 transition-all duration-500 ${selectedModule ? 'xl:pr-[440px]' : ''}`}>

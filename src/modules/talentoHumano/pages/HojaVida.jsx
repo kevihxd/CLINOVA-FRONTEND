@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, User, ArrowLeft, FileText, Trash2, Edit2, Save, X, Eye, Upload, Folder, Plus, DownloadCloud, AlertCircle, Calendar, Award, CheckCircle, MapPin, BookOpen, Clock, Syringe, Loader2, ChevronDown, ChevronRight, Settings, History } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Search, User, Users, ArrowLeft, FileText, Trash2, Edit2, Save, X, Eye, Upload, Folder, Plus, DownloadCloud, AlertCircle, AlertTriangle, Calendar, Award, CheckCircle, MapPin, BookOpen, Clock, Syringe, Loader2, ChevronDown, ChevronRight, Settings, History, GripVertical, Briefcase } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
@@ -9,9 +9,11 @@ import { cursosService } from '../services/cursos.service';
 import SecureImage from '../../../components/SecureImage';
 import { API_BASE_URL } from '../../../config/api';
 import { TrazabilidadPanel } from '../../../components/TrazabilidadPanel';
+import { esContratoNomina, esContratoOPS } from '../../../utils/contractUtils';
 
-export const HojaVida = () => {
+export const HojaVida = ({ tipoSubmodulo = null }) => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { showAlert } = useAlert();
     const { user } = useAuth();
     
@@ -33,6 +35,7 @@ export const HojaVida = () => {
     const [hojaVidaId, setHojaVidaId] = useState(null);
     const [cvNombre, setCvNombre] = useState('');
     const [usuarioHabilitado, setUsuarioHabilitado] = useState(false);
+    const [advertenciaTipoContrato, setAdvertenciaTipoContrato] = useState(null);
 
     const [catalogoVacunasGlobal, setCatalogoVacunasGlobal] = useState([]);
     const [categoriasSoportes, setCategoriasSoportes] = useState([]);
@@ -124,12 +127,31 @@ export const HojaVida = () => {
 
     const cargarCursosAsignados = useCallback(async () => {
         const uid = datosCV.usuarioId;
-        if (!uid) return;
+        const hdvId = hojaVidaId;
+        if (!uid && !hdvId) return;
         try {
-            const res = await cursosService.listarAsignados(uid);
-            setCursosAsignados(Array.isArray(res) ? res : []);
-        } catch (error) {}
-    }, [datosCV.usuarioId]);
+            let res = null;
+            if (uid) {
+                try {
+                    res = await cursosService.listarAsignados(uid);
+                } catch (e) {
+                    // Ignorar error si no hay usuario asignado aún
+                }
+            }
+            if ((!res || !Array.isArray(res) || res.length === 0) && hdvId) {
+                try {
+                    res = await http.get(`/cursos/hoja-vida/${hdvId}`);
+                } catch (e) {
+                    // Ignorar error si el endpoint o la hoja de vida no tienen cursos
+                }
+            }
+            const lista = Array.isArray(res) ? res : (res?.data || []);
+            setCursosAsignados(lista);
+        } catch (error) {
+            console.error("Error cargando cursos asignados:", error);
+            setCursosAsignados([]);
+        }
+    }, [hojaVidaId, datosCV.usuarioId]);
 
     const cargarCatalogoCursos = useCallback(async () => {
         try {
@@ -193,6 +215,7 @@ export const HojaVida = () => {
                 let freshApellidos = hv.apellidos || '';
                 let freshCorreo = hv.correoElectronico || '';
                 let freshCargoId = hv.cargos?.[0]?.id || '';
+                let foundUserObj = null;
 
                 if (isStandardUser) {
                     const p = user?.persona || {};
@@ -203,22 +226,14 @@ export const HojaVida = () => {
                     freshCargoId = user?.cargo?.id || freshCargoId;
                 } else {
                     try {
-                        const token = localStorage.getItem('token');
-                        const rawUsers = await axios.get(`${API_BASE_URL}/api/v1/usuarios`, { headers: { Authorization: `Bearer ${token}` } });
-                        const allUsers = rawUsers.data?.content || rawUsers.data?.data || rawUsers.data || [];
-                        const foundUser = Array.isArray(allUsers) ? allUsers.find(u => 
-                            String(u?.persona?.numeroDocumento) === String(cedulaTrim) || 
-                            String(u?.numeroDocumento) === String(cedulaTrim) || 
-                            String(u?.username) === String(cedulaTrim)
-                        ) : null;
-                        
-                        if (foundUser) {
-                            const p = foundUser.persona || {};
+                        foundUserObj = await http.get(`/usuarios/documento/${cedulaTrim}`).catch(() => null);
+                        if (foundUserObj) {
+                            const p = foundUserObj.persona || {};
                             freshPerfil = p.perfilVacunacion || freshPerfil;
-                            freshNombres = foundUser.nombres || `${p.primerNombre || ''} ${p.segundoNombre || ''}`.trim() || freshNombres;
-                            freshApellidos = foundUser.apellidos || `${p.primerApellido || ''} ${p.segundoApellido || ''}`.trim() || freshApellidos;
-                            freshCorreo = p.correoElectronico || foundUser.email || foundUser.username || freshCorreo;
-                            freshCargoId = foundUser.cargo?.id || freshCargoId;
+                            freshNombres = `${p.primerNombre || ''} ${p.segundoNombre || ''}`.trim() || freshNombres;
+                            freshApellidos = `${p.primerApellido || ''} ${p.segundoApellido || ''}`.trim() || freshApellidos;
+                            freshCorreo = p.correoElectronico || foundUserObj.username || freshCorreo;
+                            freshCargoId = foundUserObj.cargo?.id || freshCargoId;
                         }
                     } catch (err) {}
                 }
@@ -229,12 +244,45 @@ export const HojaVida = () => {
                     direccionResidencia: hv.direccionResidencia || '', telefono: hv.telefono || '', correoElectronico: freshCorreo, 
                     contactoEmergencia: hv.contactoEmergencia || '', telefonoContactoEmergencia: hv.telefonoContactoEmergencia || '', 
                     arl: hv.arl || '', eps: hv.eps || '', afp: hv.afp || '', cajaCompensacion: hv.cajaCompensacion || '',
-                    fechaIngreso: hv.fechaIngreso || '', tipoContrato: hv.tipoContrato || '', sedeId: hv.sedes?.[0]?.id || '', 
+                    fechaIngreso: hv.fechaIngreso || '', tipoContrato: hv.tipoContrato || foundUserObj?.tipoContrato || '', sedeId: hv.sedes?.[0]?.id || '', 
                     cargoId: freshCargoId, salario: hv.salario || '', subsidioTransporte: hv.subsidioTransporte || '',
-                    estado: hv.estado || '', fechaRetiro: hv.fechaRetiro || '', motivoRetiro: hv.motivoRetiro || '', usuarioId: hv.usuarioId || '', 
+                    estado: hv.estado || '', fechaRetiro: hv.fechaRetiro || '', motivoRetiro: hv.motivoRetiro || '', usuarioId: hv.usuarioId || foundUserObj?.id || '', 
                     perfilVacunacion: freshPerfil, detalleVacunas: parsedVacunas,
                     fotoUrl: hv.fotoUrl ? `${API_BASE_URL}${hv.fotoUrl}?t=${Date.now()}` : ''
                 });
+
+                // Validar pertenencia a Nómina vs. OPS usando el resolvedor estandarizado
+                const rawContratoStr = String(hv.tipoContrato || foundUserObj?.tipoContrato || foundUserObj?.hojaVida?.tipoContrato || '').trim();
+                const esNominaUser = esContratoNomina(rawContratoStr);
+                const esOpsUser = esContratoOPS(rawContratoStr);
+
+                if (tipoSubmodulo === 'NOMINA' && esOpsUser && !esNominaUser) {
+                    setAdvertenciaTipoContrato({
+                        tipoEsperado: 'NÓMINA',
+                        tipoEncontrado: 'PROVEEDORES / OPS',
+                        nombre: `${freshNombres} ${freshApellidos}`,
+                        cedula: cedulaTrim,
+                        targetRoute: '/hojasDeVida/proveedores'
+                    });
+                    showAlert({ 
+                        message: `⚠️ ATENCIÓN: El usuario ${freshNombres} ${freshApellidos} (CC ${cedulaTrim}) está registrado como PROVEEDOR (OPS / Prestación de Servicios).`, 
+                        status: 'warning' 
+                    });
+                } else if (tipoSubmodulo === 'PROVEEDORES' && esNominaUser && !esOpsUser) {
+                    setAdvertenciaTipoContrato({
+                        tipoEsperado: 'PROVEEDORES (OPS)',
+                        tipoEncontrado: 'NÓMINA',
+                        nombre: `${freshNombres} ${freshApellidos}`,
+                        cedula: cedulaTrim,
+                        targetRoute: '/hojasDeVida/nomina'
+                    });
+                    showAlert({ 
+                        message: `⚠️ ATENCIÓN: El usuario ${freshNombres} ${freshApellidos} (CC ${cedulaTrim}) está registrado en NÓMINA.`, 
+                        status: 'warning' 
+                    });
+                } else {
+                    setAdvertenciaTipoContrato(null);
+                }
 
                 try {
                     const soportesData = await http.get(`/soportes/hoja-vida/${hv.id}`);
@@ -412,17 +460,67 @@ export const HojaVida = () => {
         }
     };
 
+    const handleDragStartDoc = (e, doc, fromCategory) => {
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+            type: 'MOVE_SUPPORT',
+            docId: doc.id,
+            fromCategory: fromCategory
+        }));
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleMoverSoporte = useCallback(async (docId, targetCategory) => {
+        try {
+            // Actualización optimista instantánea en UI
+            setResultadosIA(prev => prev.map(doc => {
+                if (doc.id === docId) {
+                    return { ...doc, tipoDocumento: targetCategory };
+                }
+                return doc;
+            }));
+
+            await http.put(`/soportes/${docId}/categoria`, { tipoDocumento: targetCategory });
+            showAlert({ message: `Documento movido a "${targetCategory}"`, status: 'success' });
+            setExpandedCategories(prev => ({ ...prev, [targetCategory]: true }));
+        } catch (error) {
+            const msg = error?.response?.data?.message || 'Error al mover el documento de carpeta';
+            showAlert({ message: msg, status: 'error' });
+            if (hojaVidaId) {
+                try {
+                    const soportesData = await http.get(`/soportes/hoja-vida/${hojaVidaId}`);
+                    setResultadosIA(Array.isArray(soportesData) ? soportesData : (soportesData.data || []));
+                } catch (err) {}
+            }
+        }
+    }, [hojaVidaId, showAlert]);
+
     const handleDrop = useCallback(async (e, categoria) => {
         e.preventDefault();
         e.stopPropagation();
         setDraggingCategory(null);
+
+        // 1. Verificar si es una reubicación interna de tarjeta (mover entre carpetas)
+        const dragDataStr = e.dataTransfer.getData('text/plain');
+        if (dragDataStr) {
+            try {
+                const dragData = JSON.parse(dragDataStr);
+                if (dragData && dragData.type === 'MOVE_SUPPORT' && dragData.docId) {
+                    if (dragData.fromCategory !== categoria) {
+                        await handleMoverSoporte(dragData.docId, categoria);
+                    }
+                    return;
+                }
+            } catch (parseErr) {}
+        }
+
+        // 2. Si no es reubicación, verificar si es subida de archivo PDF externo desde el sistema
         const file = e.dataTransfer.files[0];
         if (file && file.type === "application/pdf") {
             await handleManualUpload({ target: { files: [file] } }, categoria);
-        } else {
+        } else if (file) {
             showAlert({ message: 'Solo se permiten archivos PDF', status: 'error' });
         }
-    }, [hojaVidaId, showAlert]);
+    }, [hojaVidaId, showAlert, handleManualUpload, handleMoverSoporte]);
 
     const handleEliminarDocumento = async (idSoporte) => {
         if (!window.confirm('¿Eliminar este documento de forma permanente?')) return;
@@ -439,11 +537,14 @@ export const HojaVida = () => {
     const handleGuardarNombre = async (idSoporte) => {
         if (!editDocValue.trim()) return;
         try {
-            await http.put(`/soportes/${idSoporte}/tipo?tipoDocumento=${encodeURIComponent(editDocValue)}`);
-            setResultadosIA(prev => prev.map(doc => doc.id === idSoporte ? { ...doc, tipoDocumento: editDocValue } : doc));
+            await http.put(`/soportes/${idSoporte}/nombre?nombreArchivo=${encodeURIComponent(editDocValue.trim())}`);
+            setResultadosIA(prev => prev.map(doc => doc.id === idSoporte ? { ...doc, nombreArchivo: editDocValue.trim() } : doc));
             setEditingDocId(null);
-            showAlert({ message: 'Nombre actualizado', status: 'success' });
-        } catch (error) {}
+            showAlert({ message: 'Nombre del archivo actualizado correctamente', status: 'success' });
+        } catch (error) {
+            const msg = error?.response?.data?.message || 'Error al actualizar el nombre del archivo';
+            showAlert({ message: msg, status: 'error' });
+        }
     };
 
     const handleRechazarDocumento = async (e) => {
@@ -625,22 +726,70 @@ export const HojaVida = () => {
     return (
         <div className="min-h-screen bg-gray-50 p-4 md:p-8 relative">
             <div className="max-w-7xl mx-auto space-y-6">
+
+                {/* AVISO DESTACADO DE ADVERTENCIA DE CONTRATO (COLOCADO ARRIBA) */}
+                {advertenciaTipoContrato && (
+                    <div className={`p-5 md:p-6 rounded-2xl shadow-xl transition-all duration-300 border flex flex-col md:flex-row items-start md:items-center justify-between gap-5 relative overflow-hidden ${
+                        advertenciaTipoContrato.tipoEncontrado.includes('OPS') 
+                            ? 'bg-gradient-to-r from-amber-600 via-amber-700 to-orange-700 text-white border-amber-400/50 shadow-amber-600/30' 
+                            : 'bg-gradient-to-r from-teal-700 via-cyan-700 to-blue-800 text-white border-teal-400/50 shadow-teal-600/30'
+                    }`}>
+                        <div className="flex items-start md:items-center gap-4 relative z-10">
+                            <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl shrink-0 shadow-inner">
+                                <AlertTriangle className="w-8 h-8 text-amber-200 animate-bounce" />
+                            </div>
+                            <div className="space-y-1">
+                                <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md text-white font-extrabold text-[11px] rounded-full uppercase tracking-wider mb-1">
+                                    ¡Atención — Clasificación Diferente!
+                                </span>
+                                <h3 className="text-lg md:text-xl font-black tracking-tight leading-snug">
+                                    El usuario pertenece a {advertenciaTipoContrato.tipoEncontrado}
+                                </h3>
+                                <p className="text-sm md:text-base font-medium text-white/90">
+                                    <strong className="text-amber-100 underline decoration-2">{advertenciaTipoContrato.nombre}</strong> (Cédula: <strong>{advertenciaTipoContrato.cedula}</strong>) no está en {advertenciaTipoContrato.tipoEsperado}.
+                                </p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => navigate(`${advertenciaTipoContrato.targetRoute}?cedula=${advertenciaTipoContrato.cedula}`)}
+                            className="px-6 py-3 bg-white text-slate-900 font-extrabold text-sm rounded-xl shadow-lg hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 shrink-0 self-stretch md:self-auto justify-center cursor-pointer"
+                        >
+                            <span>Ir a {advertenciaTipoContrato.tipoEncontrado.includes('OPS') ? 'Proveedores (OPS)' : 'Nómina'}</span>
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
+
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <button onClick={() => navigate(-1)} className="p-2 bg-white text-gray-500 hover:bg-gray-100 rounded-full shadow-sm transition-all self-start"><ArrowLeft className="w-5 h-5" /></button>
                     <div className="flex-1">
-                        <h1 className="text-xl md:text-2xl font-bold text-gray-800">{isStandardUser ? 'Mi Hoja de Vida' : 'Gestión de Hoja de Vida'}</h1>
-                        <p className="text-gray-500 text-xs md:text-sm">{hojaVidaId ? `Perfil activo: ${cvNombre}` : (isStandardUser ? 'Verifica y completa tus datos' : 'Actualización de perfil laboral')}</p>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h1 className="text-xl md:text-2xl font-bold text-gray-800">
+                                {tipoSubmodulo === 'NOMINA' ? 'Hojas de Vida — NÓMINA' : tipoSubmodulo === 'PROVEEDORES' ? 'Hojas de Vida — PROVEEDORES (OPS)' : (isStandardUser ? 'Mi Hoja de Vida' : 'Gestión de Hoja de Vida')}
+                            </h1>
+                            {tipoSubmodulo === 'NOMINA' && (
+                                <span className="px-3 py-0.5 bg-teal-100 text-teal-800 font-extrabold text-[11px] rounded-full uppercase tracking-wider flex items-center gap-1">
+                                    <Users className="w-3.5 h-3.5 text-teal-600" /> Submódulo Nómina
+                                </span>
+                            )}
+                            {tipoSubmodulo === 'PROVEEDORES' && (
+                                <span className="px-3 py-0.5 bg-indigo-100 text-indigo-800 font-extrabold text-[11px] rounded-full uppercase tracking-wider flex items-center gap-1">
+                                    <Briefcase className="w-3.5 h-3.5 text-indigo-600" /> Submódulo Proveedores (OPS)
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-gray-500 text-xs md:text-sm">{hojaVidaId ? `Perfil activo: ${cvNombre}` : (isStandardUser ? 'Verifica y completa tus datos' : 'Ingrese la cédula para consultar o gestionar un perfil laboral')}</p>
                     </div>
                 </div>
 
                 {!isStandardUser && (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                         <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 w-full max-w-xl">
                             <div className="relative flex-1">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><Search className="h-4 w-4" /></div>
-                                <input type="text" required className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 text-sm outline-none" placeholder="Buscar cédula del usuario..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                <input type="text" required className="block w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 text-sm outline-none" placeholder={`Buscar cédula de ${tipoSubmodulo === 'NOMINA' ? 'personal de Nómina' : tipoSubmodulo === 'PROVEEDORES' ? 'contratista/OPS' : 'usuario'}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                             </div>
-                            <button type="submit" disabled={isSearching} className="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-70 flex items-center justify-center min-w-[100px] text-sm">
+                            <button type="submit" disabled={isSearching} className={`px-6 py-2 ${tipoSubmodulo === 'NOMINA' ? 'bg-teal-600 hover:bg-teal-700' : tipoSubmodulo === 'PROVEEDORES' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold rounded transition-colors shadow-sm disabled:opacity-70 flex items-center justify-center min-w-[100px] text-sm`}>
                                 {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : "Buscar"}
                             </button>
                         </form>
@@ -736,9 +885,7 @@ export const HojaVida = () => {
                                                 <div><label className={labelClass}>Fecha de ingreso</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.fechaIngreso || '—'} /></div>
                                                 <div><label className={labelClass}>Tipo de contrato</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.tipoContrato || '—'} /></div>
                                                 <div><label className={labelClass}>Sede</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={catalogoSedes.find(s => String(s.id) === String(datosCV.sedeId))?.nombre || datosCV.sedeId || '—'} /></div>
-                                                <div><label className={labelClass}>Cargo / Objeto</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={catalogoCargos.find(c => String(c.id) === String(datosCV.cargoId))?.nombre || datosCV.cargoId || '—'} /></div>
-                                                <div><label className={labelClass}>Salario</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.salario || '—'} /></div>
-                                                <div><label className={labelClass}>Subsidio de transporte</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.subsidioTransporte || '—'} /></div>
+                                                <div><label className={labelClass}>Cargo / Objeto</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={catalogoCargos.find(c => String(c.id) === String(datosCV.cargoId))?.nombre || datosCV.cargoId || '—'} title="Se asigna únicamente al crear o editar el usuario en Gestión de Usuarios" /></div>
                                                 <div><label className={labelClass}>Estado</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.estado || '—'} /></div>
                                                 <div><label className={labelClass}>Fecha de retiro</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.fechaRetiro || '—'} /></div>
                                                 <div><label className={labelClass}>Motivo de retiro</label><input type="text" readOnly className={`${inputClass} ${readOnlyClass}`} value={datosCV.motivoRetiro || '—'} /></div>
@@ -792,7 +939,12 @@ export const HojaVida = () => {
                                                         ) : (
                                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                                                 {docsCategoria.map(doc => (
-                                                                    <div key={doc.id} className={`bg-white border p-3 rounded-lg shadow-sm flex flex-col gap-2 ${doc.estado === 'Rechazado' ? 'border-red-300 bg-red-50/30' : 'border-gray-200'}`}>
+                                                                    <div 
+                                                                        key={doc.id} 
+                                                                        draggable={true}
+                                                                        onDragStart={(e) => handleDragStartDoc(e, doc, categoria)}
+                                                                        className={`bg-white border p-3 rounded-lg shadow-sm flex flex-col gap-2 cursor-grab active:cursor-grabbing hover:border-blue-400 hover:shadow-md transition-all group ${doc.estado === 'Rechazado' ? 'border-red-300 bg-red-50/30' : 'border-gray-200'}`}
+                                                                    >
                                                                         {editingDocId === doc.id ? (
                                                                             <div className="flex gap-1">
                                                                                 <input type="text" autoFocus value={editDocValue} onChange={(e) => setEditDocValue(e.target.value)} className="flex-1 px-2 py-1 text-xs border border-blue-300 rounded outline-none" />
@@ -802,10 +954,14 @@ export const HojaVida = () => {
                                                                         ) : (
                                                                             <div className="flex justify-between items-start">
                                                                                 <div className="flex flex-col gap-1 overflow-hidden pr-2">
-                                                                                    <div className="flex items-center gap-2"><FileText className="w-4 h-4 text-red-500 shrink-0" /><h4 className="font-semibold text-gray-700 text-xs truncate" title={doc.nombreArchivo}>{doc.nombreArchivo}</h4></div>
-                                                                                    {doc.estado === 'Rechazado' && <span className="text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded inline-block w-max tracking-wide">RECHAZADO</span>}
+                                                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                                                        <GripVertical className="w-3.5 h-3.5 text-gray-300 group-hover:text-blue-500 shrink-0 cursor-grab opacity-60 group-hover:opacity-100 transition-opacity" title="Arrastrar para mover de carpeta" />
+                                                                                        <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                                                                                        <h4 className="font-semibold text-gray-700 text-xs truncate" title={doc.nombreArchivo}>{doc.nombreArchivo}</h4>
+                                                                                    </div>
+                                                                                    {doc.estado === 'Rechazado' && <span className="text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded inline-block w-max tracking-wide ml-5">RECHAZADO</span>}
                                                                                 </div>
-                                                                                <button onClick={() => { setEditingDocId(doc.id); setEditDocValue(doc.tipoDocumento); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded shrink-0 transition-colors"><Edit2 className="w-3.5 h-3.5"/></button>
+                                                                                <button onClick={() => { setEditingDocId(doc.id); setEditDocValue(doc.nombreArchivo || ''); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded shrink-0 transition-colors" title="Cambiar nombre del archivo"><Edit2 className="w-3.5 h-3.5"/></button>
                                                                             </div>
                                                                         )}
                                                                         <div className="mt-auto pt-2 grid grid-cols-4 gap-1.5">

@@ -18,7 +18,7 @@ const CATEGORIAS_PERMISOS = [
     nombre: "Talento Humano",
     modulos: [
       { id: "HOJAS_VIDA", label: "Hojas de Vida" },
-      { id: "INCAPACIDADES", label: "Incapacidades" },
+      { id: "INCAPACIDADES", label: "Incapacidad, ausentismo y licencias" },
       { id: "CURSOS", label: "Gestión de Cursos" },
       { id: "PERFILES_CARGOS", label: "Perfiles de Cargo" }
     ]

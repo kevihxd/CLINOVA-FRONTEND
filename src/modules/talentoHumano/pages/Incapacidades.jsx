@@ -122,8 +122,8 @@ export const Incapacidades = () => {
         <div className="min-h-screen bg-gray-50 p-6 md:p-8">
             <div className="max-w-7xl mx-auto space-y-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Incapacidades</h1>
-                    <p className="text-sm text-gray-500 mt-1">Gestión de incapacidades del personal</p>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Incapacidad, ausentismo y licencias</h1>
+                    <p className="text-sm text-gray-500 mt-1">Gestión de incapacidades, ausentismos y licencias del personal</p>
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

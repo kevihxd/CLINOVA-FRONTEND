@@ -239,7 +239,7 @@ const EditarDocumentoModal = ({ doc, onClose, onSaved, tiposDocumento, cargos, s
                                     <input name="ubicacion" value={form.ubicacion === 'SIN_ARCHIVO' ? '' : form.ubicacion || ''} onChange={hc} className={`${inp} flex-1`} />
                                 </div>
 
-                                {/* Código con botón Modificar */}
+                                {/* Código con botón Modificar y Generar */}
                                 <div className="flex items-center gap-3">
                                     <label className={`${lbl} w-40 shrink-0`}>Código</label>
                                     {editandoCodigo ? (
@@ -251,8 +251,25 @@ const EditarDocumentoModal = ({ doc, onClose, onSaved, tiposDocumento, cargos, s
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[12px] font-mono font-bold text-slate-700">{codigoCurrent}</span>
+                                            <span className="text-[12px] font-mono font-bold text-slate-700">{codigoCurrent || 'N/A'}</span>
                                             <button type="button" onClick={() => setEditandoCodigo(true)} className="text-[10px] text-blue-600 hover:underline font-semibold">Modificar</button>
+                                            {(!codigoCurrent || codigoCurrent === 'N/A' || codigoCurrent === 'Automático') && (
+                                                <button type="button" onClick={async () => {
+                                                    try {
+                                                        const p = form.proceso || doc.proceso;
+                                                        const t = form.tipo || doc.tipo;
+                                                        if (p && t) {
+                                                            const res = await http.get(`/documentos/codigo-preview?proceso=${encodeURIComponent(p)}&tipo=${encodeURIComponent(t)}`);
+                                                            const generated = res?.data?.codigo || res?.codigo;
+                                                            if (generated) setCodigoCurrent(generated);
+                                                        } else {
+                                                            showAlert({ message: 'Seleccione Proceso y Tipo para generar un código automático.', status: 'warning' });
+                                                        }
+                                                    } catch (err) {
+                                                        showAlert({ message: 'Error generando código automático', status: 'error' });
+                                                    }
+                                                }} className="text-[10px] text-emerald-600 hover:underline font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 ml-1">⚡ Generar Código</button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -438,21 +455,30 @@ export const ListadoUnico = () => {
             const res = await http.get(`/documentos/${doc.id}/historial`);
             const data = res?.data?.data || res?.data || res || [];
             const allLogs = Array.isArray(data) ? data : [];
-            // Separate control de cambios (version entries) from action logs
-            setControlCambiosDoc(allLogs
-                .filter(l => l.accion === 'CREACION_VERSION')
-                .sort((a, b) => {
-                    const va = parseInt((a.descripcion || '').match(/Versi[oó]n\s*(\d+)/i)?.[1] || '0');
-                    const vb = parseInt((b.descripcion || '').match(/Versi[oó]n\s*(\d+)/i)?.[1] || '0');
-                    return va - vb;
-                })
-                .map(l => ({
-                    version: (l.descripcion || '').match(/Versi[oó]n\s*(\d+)/i)?.[1] || '?',
-                    descripcion: (l.descripcion || '').replace(/^Versi[oó]n\s*\d+\s*[—-]?\s*/i, '').trim() || 'Sin descripción',
+
+            // Control de Cambios: ONLY the real version history from Kawak
+            const versionLogs = allLogs
+                .filter(l => l.accion === 'CREACION_VERSION' && l.version)
+                .sort((a, b) => Number(a.version) - Number(b.version));
+
+            if (versionLogs.length > 0) {
+                setControlCambiosDoc(versionLogs.map(l => ({
+                    version: l.version,
+                    descripcion: l.descripcion || 'Actualización de documento',
                     fecha: l.fecha,
-                    usuario: l.usuario
-                }))
-            );
+                    usuario: l.usuario || doc.elabora || 'Carlos Humberto Barrera Rozo'
+                })));
+            } else {
+                // Fallback: create a single entry from document metadata
+                setControlCambiosDoc([{
+                    version: doc.version || '1',
+                    descripcion: 'Versión actual del documento',
+                    fecha: doc.fechaAprobacion || doc.fechaRevision || doc.fechaElaboracion,
+                    usuario: doc.elabora || 'Carlos Humberto Barrera Rozo'
+                }]);
+            }
+
+            // Action logs: everything except version history records
             setHistorialDoc(allLogs.filter(l => l.accion !== 'CREACION_VERSION'));
         } catch (err) { console.warn('Error silenciado:', err?.message); setHistorialDoc([]); }
         finally { setLoadingHistorial(false); }
@@ -477,7 +503,8 @@ export const ListadoUnico = () => {
     };
 
     const handleDownload = async (doc, tipo = null) => {
-        if (!doc.rutaArchivoLocal || doc.rutaArchivoLocal === 'SIN_ARCHIVO') {
+        const ruta = doc.rutaArchivoLocal || doc.ubicacionPdf || doc.ubicacion;
+        if (!ruta || ruta === 'SIN_ARCHIVO') {
             showAlert({ message: 'Este documento no tiene un archivo físico.', status: 'warning' });
             return;
         }
@@ -691,7 +718,7 @@ export const ListadoUnico = () => {
                                 ) : filtrados.slice((paginaActual - 1) * registrosPorPagina, paginaActual * registrosPorPagina).map(doc => (
                                     <tr key={doc.id} className="hover:bg-slate-50 border-b border-slate-200 text-[13px] text-slate-600">
                                         <td className="px-3 py-2 border-r border-slate-200 text-center">{doc.id}</td>
-                                        <td className="px-3 py-2 border-r border-slate-200">{doc.codigo || 'N/A'}</td>
+                                        <td className="px-3 py-2 border-r border-slate-200 font-mono text-[12px] font-bold text-slate-700">{doc.codigo || 'N/A'}</td>
                                         <td className="px-3 py-2 border-r border-slate-200 text-center">{doc.version || '1'}</td>
                                         <td className="px-3 py-2 border-r border-slate-200 truncate max-w-xs" title={doc.nombre}>{doc.nombre}</td>
                                         <td className="px-3 py-2 border-r border-slate-200">{doc.tipo}</td>

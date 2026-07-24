@@ -125,7 +125,9 @@ export const GestionActas = () => {
             : `¿Archivar el acta "${acta.titulo}"?`;
         if (!window.confirm(mensajeConfirm)) return;
         try {
-            await http.put(`/actas/${acta.id}`, { ...acta, estado: nuevoEstado });
+            const resFull = await http.get(`/actas/${acta.id}`);
+            const dataFull = resFull?.data?.data || resFull?.data || resFull || {};
+            await http.put(`/actas/${acta.id}`, { ...dataFull, estado: nuevoEstado });
             showAlert({ message: `Acta ${nuevoEstado === 'Publicada' ? 'publicada' : 'archivada'} exitosamente`, status: 'success' });
             fetchData();
         } catch (error) {

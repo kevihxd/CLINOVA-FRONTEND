@@ -5,7 +5,7 @@ import { login as loginService } from '../services/auth.service';
 import { useAlert } from '../../../providers/AlertProvider';
 import { useAuth } from '../../../providers/AuthProvider';
 
-export const LoginForm = ({ onForgotPassword }) => {
+export const LoginForm = () => {
     const navigate = useNavigate();
     const { showAlert } = useAlert();
     const { login } = useAuth();
@@ -48,8 +48,17 @@ export const LoginForm = ({ onForgotPassword }) => {
     return (
         <div className="w-full flex flex-col h-full justify-center">
             <div className="mb-8">
-                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Iniciar sesión</h2>
-                <p className="text-slate-500 text-sm mt-1.5 font-medium">Ingrese sus credenciales</p>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 mb-3 shadow-xs">
+                    <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shadow-[0_0_6px_rgba(37,99,235,0.6)]" />
+                    <span className="text-[10px] font-black tracking-widest text-blue-700 uppercase">Clinova</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
+                    Administración de <br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#1a559e] via-blue-600 to-sky-500 font-extrabold">
+                        Sistemas de Gestión
+                    </span>
+                </h2>
+                <p className="text-slate-500 text-xs sm:text-sm mt-2 font-medium">Ingrese sus credenciales para continuar</p>
             </div>
 
             <form className="space-y-5" onSubmit={handleLogin}>
@@ -113,14 +122,6 @@ export const LoginForm = ({ onForgotPassword }) => {
                         />
                         <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">Recordarme</span>
                     </label>
-                    <button
-                        type="button"
-                        onClick={onForgotPassword}
-                        disabled={isLoading}
-                        className="text-sm font-semibold text-[#1a559e] hover:text-[#123e75] transition-colors disabled:opacity-60"
-                    >
-                        ¿Olvidó su clave?
-                    </button>
                 </div>
 
                 <button

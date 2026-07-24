@@ -71,10 +71,10 @@ export const TalentoHumanoOptions = ({ onClose }) => {
                         </div>
                         <div className="flex-1">
                             <h3 className="font-bold text-slate-800 group-hover:text-red-600 transition-colors text-base">
-                                Incapacidades
+                                Incapacidad, ausentismo y licencias
                             </h3>
                             <p className="text-xs text-slate-500 mt-1">
-                                Registro y control de ausentismos médicos
+                                Registro y control de incapacidades, ausentismos y licencias médicas
                             </p>
                         </div>
                     </button>

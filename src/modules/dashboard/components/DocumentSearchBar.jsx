@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, FileText, Download, X, Loader2, ArrowRight } from 'lucide-react';
+import { Search, FileText, Download, X, Loader2, ArrowRight, History } from 'lucide-react';
 import { useApi } from '../../../hooks/useApi';
 import { useAlert } from '../../../providers/AlertProvider';
 import http from '../../../services/httpClient';
@@ -11,6 +11,10 @@ export const DocumentSearchBar = () => {
     const [previewUrl, setPreviewUrl] = useState(null);
     const [previewDoc, setPreviewDoc] = useState(null);
     const [previewType, setPreviewType] = useState(null);
+    const [controlCambios, setControlCambios] = useState([]);
+    const [showControlCambios, setShowControlCambios] = useState(false);
+    const [loadingControlCambios, setLoadingControlCambios] = useState(false);
+    
     const wrapperRef = useRef(null);
     const navigate = useNavigate();
     const { showAlert } = useAlert();
@@ -28,7 +32,7 @@ export const DocumentSearchBar = () => {
             (doc.codigo && doc.codigo.toLowerCase().includes(q)) ||
             (doc.tipo && doc.tipo.toLowerCase().includes(q))
         );
-    }).slice(0, 8); // Limit to 8 results for better UX
+    }).slice(0, 8);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -40,13 +44,56 @@ export const DocumentSearchBar = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const fetchControlCambios = async (docId, docMeta) => {
+        setLoadingControlCambios(true);
+        try {
+            const res = await http.get(`/documentos/${docId}/historial`);
+            const data = res?.data?.data || res?.data || res || [];
+            const allLogs = Array.isArray(data) ? data : [];
+
+            // Filter real version history logs
+            const versionLogs = allLogs
+                .filter(l => l.accion === 'CREACION_VERSION' && l.version)
+                .sort((a, b) => Number(a.version) - Number(b.version));
+
+            if (versionLogs.length > 0) {
+                setControlCambios(versionLogs.map(l => ({
+                    version: l.version,
+                    descripcion: l.descripcion || 'Actualización de documento',
+                    fecha: l.fecha || '—',
+                    usuario: l.usuario || docMeta.elabora || 'SGC Clinical House'
+                })));
+            } else {
+                // Fallback entry from document metadata
+                setControlCambios([{
+                    version: docMeta.version || '01',
+                    descripcion: 'Documentación por primera vez para su inclusión en el SGC.',
+                    fecha: docMeta.fechaAprobacion || docMeta.fechaRevision || docMeta.fechaElaboracion || '—',
+                    usuario: docMeta.elabora || 'SGC Clinical House'
+                }]);
+            }
+        } catch (error) {
+            setControlCambios([{
+                version: docMeta.version || '01',
+                descripcion: 'Documentación por primera vez para su inclusión en el SGC.',
+                fecha: docMeta.fechaAprobacion || docMeta.fechaRevision || docMeta.fechaElaboracion || '—',
+                usuario: docMeta.elabora || 'SGC Clinical House'
+            }]);
+        } finally {
+            setLoadingControlCambios(false);
+        }
+    };
+
     const handlePreview = async (doc) => {
         setIsOpen(false);
+        setShowControlCambios(false);
+        setControlCambios([]);
+        
         try {
-            // Pedimos el tipo PDF explícitamente para la vista previa
+            fetchControlCambios(doc.id, doc);
+
             const data = await http.get(`/documentos/descargar/${doc.id}?tipo=pdf`, { responseType: 'blob' });
             
-            // Check if backend returned JSON error despite 200 OK
             if (data.type && data.type.includes('application/json')) {
                 const text = await data.text();
                 const json = JSON.parse(text);
@@ -54,10 +101,6 @@ export const DocumentSearchBar = () => {
                 return;
             }
 
-            const isPdfOrImage = data.type && (data.type.includes('pdf') || data.type.includes('image'));
-            
-            // Show modal for everything
-            // If it's not a PDF/Image, we just pass the blob type to render a fallback message
             const finalBlob = new Blob([data], { type: data.type || 'application/pdf' });
             const url = window.URL.createObjectURL(finalBlob);
             setPreviewUrl(url);
@@ -85,6 +128,8 @@ export const DocumentSearchBar = () => {
         setPreviewUrl(null);
         setPreviewDoc(null);
         setPreviewType(null);
+        setControlCambios([]);
+        setShowControlCambios(false);
     };
 
     const handleDownloadOriginal = async () => {
@@ -106,6 +151,7 @@ export const DocumentSearchBar = () => {
 
     return (
         <div ref={wrapperRef} className="relative w-full z-50">
+            {/* Search Input Box */}
             <div className={`relative flex items-center w-full h-14 rounded-2xl bg-white transition-all duration-300 ${isOpen && query ? 'shadow-lg rounded-b-none border-b border-slate-100' : 'shadow-sm border border-slate-200 hover:border-indigo-300 hover:shadow-md'}`}>
                 <div className="pl-5 text-slate-400">
                     <Search size={22} strokeWidth={1.5} />
@@ -136,6 +182,7 @@ export const DocumentSearchBar = () => {
                 )}
             </div>
 
+            {/* Dropdown Results List */}
             {isOpen && query && (
                 <div className="absolute top-full left-0 w-full bg-white rounded-b-2xl shadow-xl border border-t-0 border-slate-200 max-h-96 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
                     {filteredDocuments.length > 0 ? (
@@ -150,13 +197,17 @@ export const DocumentSearchBar = () => {
                                             <FileText size={20} />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="text-sm font-bold text-slate-800 truncate group-hover:text-indigo-700 transition-colors">
-                                                {doc.nombre}
-                                            </h4>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono text-xs font-black px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded border border-indigo-200 shrink-0">
+                                                    {doc.codigo || 'S/C'}
+                                                </span>
+                                                <h4 className="text-sm font-bold text-slate-800 truncate group-hover:text-indigo-700 transition-colors">
+                                                    {doc.nombre}
+                                                </h4>
+                                            </div>
                                             <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
-                                                <span className="font-semibold text-slate-600">{doc.codigo}</span>
-                                                <span>•</span>
                                                 <span className="truncate">{doc.tipo}</span>
+                                                {doc.version && <span>• V-{doc.version}</span>}
                                                 <span className="ml-auto flex items-center gap-1 font-medium text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <FileText size={12} /> Vista Previa
                                                 </span>
@@ -176,54 +227,140 @@ export const DocumentSearchBar = () => {
                 </div>
             )}
 
-            {/* Preview Modal */}
+            {/* Document Preview Fullscreen Modal */}
             {previewUrl && (
-                <div className="fixed inset-0 z-[99999] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
-                        <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
-                            <div>
-                                <h3 className="font-bold text-slate-800 text-lg">{previewDoc?.nombre}</h3>
-                                <p className="text-sm text-slate-500 font-medium">{previewDoc?.codigo} • {previewDoc?.tipo}</p>
+                <div className="fixed inset-0 z-[999999] bg-slate-900/40 backdrop-blur-md flex items-center justify-center pt-16 sm:pt-20 pb-6 px-3 sm:px-6 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-[0_25px_70px_rgba(26,85,158,0.18)] w-full max-w-6xl h-full max-h-[85vh] overflow-hidden flex flex-col border border-slate-200/80">
+                        
+                        {/* Top Header Bar */}
+                        <div className="flex items-center justify-between gap-4 px-6 py-4 bg-white shrink-0 border-b border-slate-100 shadow-xs">
+                            <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                <span className="px-3.5 py-1.5 bg-[#1a559e] text-white font-mono font-black text-xs sm:text-sm rounded-xl shadow-xs shrink-0 tracking-wider">
+                                    {previewDoc?.codigo || 'S/C'}
+                                </span>
+                                <h3 className="font-extrabold text-slate-800 text-base sm:text-xl leading-snug truncate" title={previewDoc?.nombre}>
+                                    {previewDoc?.nombre}
+                                </h3>
                             </div>
-                            <div className="flex items-center gap-2">
+
+                            <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                    onClick={() => setShowControlCambios(!showControlCambios)}
+                                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-xs transition-all border shadow-2xs ${showControlCambios ? 'bg-[#1a559e] text-white border-[#1a559e]' : 'bg-blue-50/80 hover:bg-blue-100/80 text-[#1a559e] border-blue-200/80'}`}
+                                >
+                                    <History size={16} />
+                                    <span className="hidden sm:inline">Control de Cambios</span>
+                                    {controlCambios.length > 0 && (
+                                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${showControlCambios ? 'bg-white text-[#1a559e]' : 'bg-[#1a559e] text-white'}`}>
+                                            {controlCambios.length}
+                                        </span>
+                                    )}
+                                </button>
                                 <button 
                                     onClick={handleDownloadOriginal}
-                                    className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors flex items-center gap-2 font-medium text-sm"
+                                    className="px-3.5 py-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all flex items-center gap-1.5 font-bold text-xs border border-emerald-200 shadow-2xs"
                                     title="Descargar documento original"
                                 >
-                                    <Download size={18} /> Descargar
+                                    <Download size={15} /> <span className="hidden sm:inline">Descargar</span>
                                 </button>
                                 <button 
                                     onClick={closePreview}
-                                    className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                                    className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors ml-1"
                                 >
-                                    <X size={24} />
+                                    <X size={20} />
                                 </button>
                             </div>
                         </div>
-                        <div className="flex-1 w-full bg-slate-200">
+
+                        {/* Metadata Strip */}
+                        <div className="px-6 py-2.5 bg-slate-50 text-slate-600 text-xs flex items-center justify-between border-b border-slate-200/80 shrink-0 flex-wrap gap-2">
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <span>TIPO: <strong className="text-slate-800">{previewDoc?.tipo || 'N/A'}</strong></span>
+                                <span>•</span>
+                                <span>VERSIÓN: <strong className="text-[#1a559e] font-mono font-bold">V-{previewDoc?.version || '01'}</strong></span>
+                                {previewDoc?.proceso && (
+                                    <>
+                                        <span>•</span>
+                                        <span>PROCESO: <strong className="text-slate-800">{previewDoc?.proceso}</strong></span>
+                                    </>
+                                )}
+                            </div>
+                            {previewDoc?.estado && (
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${previewDoc.estado === 'VIGENTE' ? 'bg-emerald-100 text-emerald-700 border border-emerald-300/60' : 'bg-amber-100 text-amber-700 border border-amber-300/60'}`}>
+                                    {previewDoc.estado}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Expandable Control de Cambios Drawer */}
+                        {showControlCambios && (
+                            <div className="bg-slate-50 border-b border-slate-200 p-5 max-h-60 overflow-y-auto animate-in slide-in-from-top duration-200 shrink-0">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-[#1a559e] flex items-center gap-2">
+                                        <History size={15} /> Control de Cambios del Documento ({previewDoc?.codigo})
+                                    </h4>
+                                    <button onClick={() => setShowControlCambios(false)} className="text-slate-400 hover:text-slate-600 text-xs font-medium">
+                                        Cerrar panel
+                                    </button>
+                                </div>
+
+                                {loadingControlCambios ? (
+                                    <div className="flex items-center justify-center py-4 text-xs text-slate-500 gap-2">
+                                        <Loader2 size={16} className="animate-spin text-[#1a559e]" /> Cargando historial...
+                                    </div>
+                                ) : controlCambios.length === 0 ? (
+                                    <p className="text-xs text-slate-500 italic py-2">No se encontró historial registrado.</p>
+                                ) : (
+                                    <div className="overflow-x-auto rounded-2xl border border-slate-200/80 shadow-xs bg-white">
+                                        <table className="w-full text-left text-xs border-collapse">
+                                            <thead>
+                                                <tr className="bg-[#1a559e] text-white uppercase text-[10px] font-extrabold tracking-wider">
+                                                    <th className="p-3 w-28 text-center border-r border-blue-600/40">FECHA</th>
+                                                    <th className="p-3 w-20 text-center border-r border-blue-600/40">VERSIÓN</th>
+                                                    <th className="p-3 border-r border-blue-600/40">RAZÓN DE CAMBIO</th>
+                                                    <th className="p-3 w-52">ELABORÓ / RESPONSABLE</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 text-slate-700">
+                                                {controlCambios.map((row, idx) => (
+                                                    <tr key={idx} className="hover:bg-blue-50/50 transition-colors">
+                                                        <td className="p-3 text-center font-mono font-semibold text-slate-600 border-r border-slate-100">{row.fecha}</td>
+                                                        <td className="p-3 text-center font-mono font-bold text-[#1a559e] border-r border-slate-100">{row.version}</td>
+                                                        <td className="p-3 font-medium text-slate-800 border-r border-slate-100">{row.descripcion}</td>
+                                                        <td className="p-3 text-slate-600">{row.usuario}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* PDF Viewer Body */}
+                        <div className="flex-1 w-full bg-slate-100 relative">
                             {(!previewType || (!previewType.includes('pdf') && !previewType.includes('image'))) ? (
                                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 p-8">
-                                    <FileText size={64} className="mb-4 text-slate-400" />
-                                    <h2 className="text-xl font-semibold text-slate-700">Vista previa no disponible</h2>
-                                    <p className="mt-2 text-center max-w-md">
-                                        Este tipo de archivo ({previewDoc?.tipo || 'Documento de Office'}) no soporta visualización directa en el navegador.
+                                    <FileText size={64} className="mb-4 text-slate-300" />
+                                    <h2 className="text-xl font-extrabold text-slate-800">Vista previa no disponible</h2>
+                                    <p className="mt-2 text-center max-w-md text-slate-500 text-sm">
+                                        Este tipo de archivo ({previewDoc?.tipo || 'Documento de Office'}) no soporta visualización directa interactiva en el navegador.
                                     </p>
                                     <div className="flex items-center gap-4 mt-6">
                                         <button 
                                             onClick={handleDownloadOriginal}
-                                            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors flex items-center gap-2 shadow-sm"
+                                            className="px-6 py-3 bg-[#1a559e] hover:bg-[#13427c] text-white font-bold text-sm rounded-2xl transition-all flex items-center gap-2 shadow-md"
                                         >
-                                            <Download size={20} /> Descargar Archivo
+                                            <Download size={18} /> Descargar Archivo Original
                                         </button>
                                         <button 
                                             onClick={() => {
                                                 closePreview();
                                                 navigate('/procesos/listado-unico');
                                             }}
-                                            className="px-6 py-3 bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 font-medium rounded-xl transition-colors flex items-center gap-2 shadow-sm"
+                                            className="px-6 py-3 bg-white text-[#1a559e] border border-blue-200 hover:bg-blue-50 font-bold text-sm rounded-2xl transition-all flex items-center gap-2 shadow-sm"
                                         >
-                                            Ir a Listado Único <ArrowRight size={20} />
+                                            Ir a Listado Único <ArrowRight size={18} />
                                         </button>
                                     </div>
                                 </div>
@@ -235,9 +372,12 @@ export const DocumentSearchBar = () => {
                                 />
                             )}
                         </div>
+
                     </div>
                 </div>
             )}
         </div>
     );
 };
+
+export default DocumentSearchBar;

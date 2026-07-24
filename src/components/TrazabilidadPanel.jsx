@@ -68,31 +68,27 @@ export const TrazabilidadPanel = ({
             {/* ── Control de Cambios (versiones históricas) ── */}
             {controlCambios.length > 0 && (
                 <div>
-                    <div className="flex items-center gap-2 mb-4">
-                        <GitBranch className="w-5 h-5 text-indigo-500" />
-                        <h3 className="font-bold text-slate-700 text-base uppercase tracking-wide">Control de Cambios</h3>
+                    <div className="border-b-2 border-orange-500 pb-1 mb-3 flex items-center gap-2">
+                        <GitBranch className="w-4 h-4 text-orange-600" />
+                        <h3 className="font-bold text-orange-600 text-sm uppercase tracking-wide">Control de Cambios</h3>
                     </div>
-                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                        <table className="w-full text-sm">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="px-4 py-3 text-left font-semibold text-slate-600 text-sm">Versión</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-slate-600 text-sm">Descripción del cambio</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-slate-600 text-sm">Fecha</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-slate-600 text-sm">Responsable</th>
+                    <div className="overflow-x-auto border border-slate-300 rounded shadow-sm mb-6">
+                        <table className="w-full text-left border-collapse text-xs bg-white">
+                            <thead>
+                                <tr className="bg-slate-200 border-b border-slate-300 text-slate-800 font-bold text-center">
+                                    <th className="px-4 py-2 border-r border-slate-300 w-24">Versión</th>
+                                    <th className="px-4 py-2 border-r border-slate-300 w-36">Fecha</th>
+                                    <th className="px-4 py-2 border-r border-slate-300 text-left">Usuario</th>
+                                    <th className="px-4 py-2 text-left">Comentario</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {controlCambios.map((cc, idx) => (
-                                    <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
-                                        <td className="px-4 py-3">
-                                            <span className="bg-indigo-100 text-indigo-700 font-bold text-sm px-2 py-0.5 rounded">
-                                                v{cc.version || idx + 1}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-700 text-sm">{cc.descripcion || cc.cambio || '—'}</td>
-                                        <td className="px-4 py-3 text-slate-500 text-sm whitespace-nowrap">{formatFecha(cc.fecha)}</td>
-                                        <td className="px-4 py-3 text-slate-500 text-sm">{cc.usuario || cc.responsable || 'Sistema'}</td>
+                                    <tr key={idx} className="border-b border-slate-200 last:border-0 hover:bg-slate-50 text-slate-700">
+                                        <td className="px-4 py-2.5 border-r border-slate-200 text-center font-bold text-xs">{cc.version || '1'}</td>
+                                        <td className="px-4 py-2.5 border-r border-slate-200 text-center whitespace-nowrap">{formatFecha(cc.fecha)}</td>
+                                        <td className="px-4 py-2.5 border-r border-slate-200 font-medium">{cc.usuario || cc.responsable || 'Carlos Humberto Barrera Rozo'}</td>
+                                        <td className="px-4 py-2.5 leading-relaxed">{cc.descripcion || cc.cambio || 'Actualización de documento'}</td>
                                     </tr>
                                 ))}
                             </tbody>

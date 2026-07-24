@@ -5,6 +5,7 @@ import { UsuariosService } from '../services/usuarios.service';
 import http from '../../../services/httpClient';
 import { cargarOpciones } from '../pages/GestionOpciones';
 import { API_BASE_URL } from '../../../config/api';
+import { CATEGORIAS_CONTRATACION, resolverCategoriaContrato, OPCIONES_CONTRATO_POR_CATEGORIA } from '../../../utils/contractUtils';
 
 const TIPOS_DOCUMENTO = [
     { id: 1, nombre: 'Cédula de Ciudadanía', sigla: 'CC' },
@@ -21,7 +22,7 @@ const ROLES = [
 ];
 
 // Roles that use "Objeto" instead of "Cargo"
-const ROLES_CON_OBJETO = ['HR_MANAGER', 'USER_PRACTICANTE'];
+const ROLES_CON_OBJETO = ['USER_PRACTICANTE'];
 
 const OPCIONES_DEFAULTS = {
     arl: ['POSITIVA', 'SURA', 'BOLÍVAR', 'COLMENA', 'LIBERTY', 'MAPFRE', 'AXA COLPATRIA'],
@@ -48,6 +49,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
         numeroTelefono: '', lugarNacimiento: '', correoElectronico: '', perfilVacunacion: '',
         username: '', password: '', rol: '', cargoId: '', objetoId: '',
         // Campos laborales
+        clasificacionLaboral: CATEGORIAS_CONTRATACION.NOMINA,
         arl: '', eps: '', afp: '', cajaCompensacion: '', fechaIngreso: '',
         tipoContrato: '', sedeId: '', salario: '', subsidioTransporte: '',
         estado: '', fechaRetiro: '', pesvFecha: '', motivoRetiro: '', responsableEvaluacionId: '',
@@ -99,38 +101,41 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
 
     useEffect(() => {
         if (editData) {
+            const rawContrato = editData.tipoContrato || editData.hojaVida?.tipoContrato || '';
+            const catResuelta = resolverCategoriaContrato(rawContrato);
             setFormData({
                 tipoDocumento: editData.persona?.tipoDocumento || '',
-                numeroDocumento: editData.persona?.numeroDocumento || '',
-                primerNombre: editData.persona?.primerNombre || '',
+                numeroDocumento: editData.persona?.numeroDocumento || editData.hojaVida?.cedula || editData.username || '',
+                primerNombre: editData.persona?.primerNombre || editData.hojaVida?.nombres || '',
                 segundoNombre: editData.persona?.segundoNombre || '',
-                primerApellido: editData.persona?.primerApellido || '',
+                primerApellido: editData.persona?.primerApellido || editData.hojaVida?.apellidos || '',
                 segundoApellido: editData.persona?.segundoApellido || '',
-                fechaNacimiento: editData.persona?.fechaNacimiento || '',
-                direccionResidencia: editData.persona?.direccionResidencia || '',
-                numeroTelefono: editData.persona?.numeroTelefono || '',
+                fechaNacimiento: editData.persona?.fechaNacimiento || (editData.hojaVida?.fechaNacimiento ? editData.hojaVida.fechaNacimiento.toString() : ''),
+                direccionResidencia: editData.persona?.direccionResidencia || editData.hojaVida?.direccionResidencia || '',
+                numeroTelefono: editData.persona?.numeroTelefono || editData.hojaVida?.telefono || '',
                 lugarNacimiento: editData.persona?.lugarNacimiento || '',
-                correoElectronico: editData.persona?.correoElectronico || '',
-                perfilVacunacion: editData.persona?.perfilVacunacion || '',
+                correoElectronico: editData.persona?.correoElectronico || editData.hojaVida?.correoElectronico || '',
+                perfilVacunacion: editData.persona?.perfilVacunacion || editData.hojaVida?.perfilVacunacion || '',
                 username: editData.username || '',
                 password: '',
                 rol: editData.rol || '',
-                cargoId: editData.cargo?.id || '',
-                objetoId: editData.objeto?.id || '',
-                arl: editData.arl || '',
-                eps: editData.eps || '',
-                afp: editData.afp || '',
-                cajaCompensacion: editData.cajaCompensacion || '',
-                fechaIngreso: editData.fechaIngreso || '',
-                tipoContrato: editData.tipoContrato || '',
-                sedeId: editData.sede?.id || editData.sedeId || '',
-                salario: editData.salario || '',
-                subsidioTransporte: editData.subsidioTransporte || '',
-                estado: editData.estado || '',
-                fechaRetiro: editData.fechaRetiro || '',
-                pesvFecha: editData.pesvFecha || '',
-                motivoRetiro: editData.motivoRetiro || '',
-                responsableEvaluacionId: editData.responsableEvaluacionId || '',
+                cargoId: String(editData.cargo?.id || editData.hojaVida?.cargos?.[0]?.id || ''),
+                objetoId: String(editData.objeto?.id || ''),
+                clasificacionLaboral: catResuelta,
+                arl: editData.arl || editData.hojaVida?.arl || '',
+                eps: editData.eps || editData.hojaVida?.eps || '',
+                afp: editData.afp || editData.hojaVida?.afp || '',
+                cajaCompensacion: editData.cajaCompensacion || editData.hojaVida?.cajaCompensacion || '',
+                fechaIngreso: editData.fechaIngreso || (editData.hojaVida?.fechaIngreso ? editData.hojaVida.fechaIngreso.toString() : ''),
+                tipoContrato: rawContrato,
+                sedeId: String(editData.sede?.id || editData.sedeId || editData.hojaVida?.sedes?.[0]?.id || ''),
+                salario: editData.salario || editData.hojaVida?.salario || '',
+                subsidioTransporte: editData.subsidioTransporte || editData.hojaVida?.subsidioTransporte || '',
+                estado: editData.estado || editData.hojaVida?.estado || 'Activo',
+                fechaRetiro: editData.fechaRetiro || (editData.hojaVida?.fechaRetiro ? editData.hojaVida.fechaRetiro.toString() : ''),
+                pesvFecha: editData.pesvFecha || editData.hojaVida?.pesv || '',
+                motivoRetiro: editData.motivoRetiro || editData.hojaVida?.motivoRetiro || '',
+                responsableEvaluacionId: String(editData.responsableEvaluacionId || editData.hojaVida?.responsableEvaluacionId || ''),
             });
         } else {
             setFormData({
@@ -138,6 +143,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                 primerApellido: '', segundoApellido: '', fechaNacimiento: '', direccionResidencia: '',
                 numeroTelefono: '', lugarNacimiento: '', correoElectronico: '', perfilVacunacion: '',
                 username: '', password: '', rol: '', cargoId: '', objetoId: '',
+                clasificacionLaboral: CATEGORIAS_CONTRATACION.NOMINA,
                 arl: '', eps: '', afp: '', cajaCompensacion: '', fechaIngreso: '',
                 tipoContrato: '', sedeId: '', salario: '', subsidioTransporte: '',
                 estado: '', fechaRetiro: '', pesvFecha: '', motivoRetiro: '', responsableEvaluacionId: '',
@@ -155,8 +161,8 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                 username: formData.username,
                 password: formData.password,
                 rol: formData.rol,
-                cargoId: (!usaObjeto && formData.cargoId) ? Number(formData.cargoId) : null,
-                objetoId: (usaObjeto && formData.objetoId) ? Number(formData.objetoId) : null,
+                cargoId: formData.cargoId ? Number(formData.cargoId) : null,
+                objetoId: formData.objetoId ? Number(formData.objetoId) : null,
                 tipoDocumento: formData.tipoDocumento || null,
                 numeroDocumento: formData.numeroDocumento,
                 primerNombre: formData.primerNombre,
@@ -205,12 +211,7 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        if (name === 'rol') {
-            // Reset cargo/objeto when role changes
-            setFormData(prev => ({ ...prev, [name]: value, cargoId: '', objetoId: '' }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const inputCls = "w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400";
@@ -318,29 +319,26 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                                 </select>
                             </div>
                             <div className="space-y-1.5">
-                                {usaObjeto ? (
-                                    <>
-                                        <label className={labelCls}>
-                                            Objeto {!editData && '*'}
-                                            <span className="ml-2 text-xs font-normal px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded-full">
-                                                {formData.rol === 'HR_MANAGER' ? 'Trabajador' : 'Practicante'}
-                                            </span>
-                                        </label>
-                                        <select name="objetoId" required={!editData} value={formData.objetoId} onChange={handleChange} className={inputCls}>
-                                            <option value="">Seleccionar Objeto...</option>
-                                            {objetos.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-                                        </select>
-                                    </>
-                                ) : (
-                                    <>
-                                        <label className={labelCls}>Cargo {!editData && '*'}</label>
-                                        <select name="cargoId" required={!editData} value={formData.cargoId} onChange={handleChange} className={inputCls}>
-                                            <option value="">Seleccionar Cargo...</option>
-                                            {cargos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                                        </select>
-                                    </>
-                                )}
+                                <label className={labelCls}>Cargo {!editData && '*'}</label>
+                                <select name="cargoId" required={!editData && !usaObjeto} value={formData.cargoId} onChange={handleChange} className={inputCls}>
+                                    <option value="">Seleccionar Cargo...</option>
+                                    {cargos.map(c => <option key={c.id} value={String(c.id)}>{c.nombre}</option>)}
+                                </select>
                             </div>
+                            {usaObjeto && (
+                                <div className="space-y-1.5">
+                                    <label className={labelCls}>
+                                        Objeto del Sistema
+                                        <span className="ml-2 text-xs font-normal px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded-full">
+                                            Practicante
+                                        </span>
+                                    </label>
+                                    <select name="objetoId" value={formData.objetoId} onChange={handleChange} className={inputCls}>
+                                        <option value="">Seleccionar Objeto...</option>
+                                        {objetos.map(o => <option key={o.id} value={String(o.id)}>{o.nombre}</option>)}
+                                    </select>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -384,18 +382,62 @@ export const CreateUsuario = ({ isOpen, onClose, onSaved, editData }) => {
                                 <label className={labelCls}>Fecha de Ingreso</label>
                                 <input type="date" name="fechaIngreso" value={formData.fechaIngreso} onChange={handleChange} className={inputCls} />
                             </div>
+                            <div className="space-y-1.5 col-span-1 md:col-span-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
+                                    Clasificación Laboral Principal *
+                                </label>
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                    <label className="flex items-center gap-2 cursor-pointer text-xs md:text-sm font-semibold text-slate-800 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-teal-500 transition-colors">
+                                        <input
+                                            type="radio"
+                                            name="clasificacionLaboral"
+                                            value={CATEGORIAS_CONTRATACION.NOMINA}
+                                            checked={formData.clasificacionLaboral === CATEGORIAS_CONTRATACION.NOMINA}
+                                            onChange={(e) => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    clasificacionLaboral: e.target.value,
+                                                    tipoContrato: 'Nomina'
+                                                }));
+                                            }}
+                                            className="text-teal-600 focus:ring-teal-500 h-4 w-4"
+                                        />
+                                        <span>NÓMINA (Directo / Fijo)</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer text-xs md:text-sm font-semibold text-slate-800 bg-white px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-500 transition-colors">
+                                        <input
+                                            type="radio"
+                                            name="clasificacionLaboral"
+                                            value={CATEGORIAS_CONTRATACION.PROVEEDORES}
+                                            checked={formData.clasificacionLaboral === CATEGORIAS_CONTRATACION.PROVEEDORES}
+                                            onChange={(e) => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    clasificacionLaboral: e.target.value,
+                                                    tipoContrato: 'Prestación de Servicios'
+                                                }));
+                                            }}
+                                            className="text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                        />
+                                        <span>PROVEEDORES (OPS)</span>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div className="space-y-1.5">
-                                <label className={labelCls}>Tipo de Contrato</label>
+                                <label className={labelCls}>Tipo de Contrato Específico</label>
                                 <select name="tipoContrato" value={formData.tipoContrato} onChange={handleChange} className={inputCls}>
                                     <option value="">Seleccione Tipo...</option>
-                                    {opcionesSelect.tipoContrato.map((op, i) => <option key={i} value={op}>{op}</option>)}
+                                    {(OPCIONES_CONTRATO_POR_CATEGORIA[formData.clasificacionLaboral] || opcionesSelect.tipoContrato).map((op, i) => (
+                                        <option key={i} value={op}>{op}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div className="space-y-1.5">
                                 <label className={labelCls}>Sede</label>
                                 <select name="sedeId" value={formData.sedeId} onChange={handleChange} className={inputCls}>
                                     <option value="">Seleccione Sede...</option>
-                                    {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                                    {sedes.map(s => <option key={s.id} value={String(s.id)}>{s.nombre}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-1.5">

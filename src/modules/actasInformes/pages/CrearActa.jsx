@@ -1,38 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Save, X, FileSignature, Info, UserPlus } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import ReactQuill from 'react-quill-new';
+import ReactQuill, { Quill } from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import http from '../../../services/httpClient';
 import { useAlert } from '../../../providers/AlertProvider';
 import { useAuth } from '../../../providers/AuthProvider';
 
+if (Quill) {
+    try {
+        const ImageFormat = Quill.import('formats/image');
+        class CustomImageFormat extends ImageFormat {
+            static create(value) {
+                const node = super.create(value);
+                if (typeof value === 'object') {
+                    if (value.url) node.setAttribute('src', value.url);
+                    if (value.width) node.setAttribute('width', value.width);
+                    if (value.style) node.setAttribute('style', value.style);
+                }
+                return node;
+            }
+
+            static formats(domNode) {
+                const formats = super.formats(domNode) || {};
+                if (domNode.hasAttribute('width')) formats.width = domNode.getAttribute('width');
+                if (domNode.hasAttribute('style')) formats.style = domNode.getAttribute('style');
+                return formats;
+            }
+
+            format(name, value) {
+                if (name === 'width') {
+                    if (value) this.domNode.setAttribute('width', value);
+                    else this.domNode.removeAttribute('width');
+                } else if (name === 'style') {
+                    if (value) this.domNode.setAttribute('style', value);
+                    else this.domNode.removeAttribute('style');
+                } else {
+                    super.format(name, value);
+                }
+            }
+        }
+        Quill.register(CustomImageFormat, true);
+    } catch (e) {
+        console.warn('CustomImageFormat registration:', e);
+    }
+}
+
 const editorModules = {
     toolbar: [
-        // Fuente, Tamaño y Encabezados
         [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-        // Formato de texto básico
         ['bold', 'italic', 'underline', 'strike'],
-        // Color de texto y fondo
         [{ 'color': [] }, { 'background': [] }],
-        // Subíndice / Superíndice
         [{ 'script': 'sub'}, { 'script': 'super' }],
-        // Alineación
         [{ 'align': [] }],
-        // Listas y Sangrías
         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
         [{ 'indent': '-1'}, { 'indent': '+1' }],
-        // Bloques y multimedia
         ['blockquote', 'code-block'],
         ['link', 'image', 'video'],
-        // Limpiar formato
         ['clean']
     ],
     clipboard: {
         matchVisual: false,
     }
 };
+
 
 // Searchable Select Component matching Clinova aesthetics
 const SearchableSelect = ({ label, required, value, onChange, options, placeholder = "Seleccionar..." }) => {
@@ -140,6 +172,194 @@ export const CrearActa = () => {
     const [requiereAprobacionActa, setRequiereAprobacionActa] = useState('No');
     const [contenido, setContenido] = useState('');
     const [estado, setEstado] = useState('Borrador');
+    // Quill editor & overlay refs
+    const quillRef = useRef(null);
+    const editorWrapperRef = useRef(null);
+    const [selectedImg, setSelectedImg] = useState(null);
+    const [overlayBounds, setOverlayBounds] = useState(null);
+
+    const updateOverlay = useCallback(() => {
+        if (!selectedImg || !editorWrapperRef.current) {
+            setOverlayBounds(null);
+            return;
+        }
+        const wrapperRect = editorWrapperRef.current.getBoundingClientRect();
+        const imgRect = selectedImg.getBoundingClientRect();
+
+        setOverlayBounds({
+            left: imgRect.left - wrapperRect.left,
+            top: imgRect.top - wrapperRect.top,
+            width: imgRect.width,
+            height: imgRect.height,
+        });
+    }, [selectedImg]);
+
+    useEffect(() => {
+        updateOverlay();
+        window.addEventListener('resize', updateOverlay);
+        window.addEventListener('scroll', updateOverlay, true);
+        return () => {
+            window.removeEventListener('resize', updateOverlay);
+            window.removeEventListener('scroll', updateOverlay, true);
+        };
+    }, [updateOverlay]);
+
+    // Image click, drag-to-move, and drop handlers for Quill
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (!quillRef.current) return;
+            const editor = quillRef.current.getEditor();
+            if (!editor) return;
+            const root = editor.root;
+
+            const makeImgsDraggable = () => {
+                const imgs = root.querySelectorAll('img');
+                imgs.forEach(img => {
+                    img.draggable = true;
+                    img.style.cursor = 'pointer';
+                });
+            };
+            makeImgsDraggable();
+
+            const handleClick = (e) => {
+                if (e.target && e.target.tagName === 'IMG') {
+                    setSelectedImg(e.target);
+                } else {
+                    setSelectedImg(null);
+                }
+            };
+
+            let draggedImg = null;
+
+            const handleDragStart = (e) => {
+                if (e.target && e.target.tagName === 'IMG') {
+                    draggedImg = e.target;
+                    e.dataTransfer.setData('text/html', e.target.outerHTML);
+                }
+            };
+
+            const handleDrop = (e) => {
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.type.startsWith('image/')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const reader = new FileReader();
+                        reader.onload = (evt) => {
+                            const range = editor.getSelection(true) || { index: editor.getLength() };
+                            editor.insertEmbed(range.index, 'image', evt.target.result);
+                            editor.setSelection(range.index + 1);
+                            makeImgsDraggable();
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                } else if (draggedImg) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const range = editor.getSelection(true) || { index: editor.getLength() };
+                    draggedImg.remove();
+                    editor.insertEmbed(range.index, 'image', draggedImg.src);
+                    draggedImg = null;
+                    setSelectedImg(null);
+                    makeImgsDraggable();
+                    setContenido(editor.root.innerHTML);
+                }
+            };
+
+            root.addEventListener('click', handleClick);
+            root.addEventListener('dragstart', handleDragStart);
+            root.addEventListener('drop', handleDrop);
+            return () => {
+                root.removeEventListener('click', handleClick);
+                root.removeEventListener('dragstart', handleDragStart);
+                root.removeEventListener('drop', handleDrop);
+            };
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    const handleCornerDrag = (e, corner) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!selectedImg) return;
+
+        const startX = e.clientX;
+        const startWidth = selectedImg.offsetWidth;
+
+        const onMouseMove = (moveEvent) => {
+            let deltaX = moveEvent.clientX - startX;
+            if (corner.includes('w')) deltaX = -deltaX;
+
+            const newWidth = Math.max(40, startWidth + deltaX);
+            selectedImg.setAttribute('width', `${newWidth}`);
+            selectedImg.style.width = `${newWidth}px`;
+            selectedImg.style.height = 'auto';
+            updateOverlay();
+        };
+
+        const onMouseUp = () => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+            if (selectedImg && quillRef.current) {
+                selectedImg.setAttribute('width', `${selectedImg.offsetWidth}`);
+                selectedImg.setAttribute('style', `width: ${selectedImg.offsetWidth}px; height: auto;`);
+                setContenido(quillRef.current.getEditor().root.innerHTML);
+            }
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    };
+
+    const alignSelectedImg = (align) => {
+        if (!selectedImg || !quillRef.current) return;
+        const editor = quillRef.current.getEditor();
+
+        // 1. Apply Quill native alignment class to the line
+        const blot = Quill.find(selectedImg);
+        if (blot) {
+            const index = editor.getIndex(blot);
+            editor.setSelection(index, 1);
+            if (align === 'left') {
+                editor.format('align', false);
+            } else {
+                editor.format('align', align);
+            }
+        }
+
+        // 2. Set parent block text-align directly for instant visual update
+        const parent = selectedImg.closest('p') || selectedImg.parentElement;
+        if (parent) {
+            if (align === 'center') {
+                parent.style.textAlign = 'center';
+                parent.className = (parent.className || '').replace(/ql-align-\w+/g, '') + ' ql-align-center';
+            } else if (align === 'right') {
+                parent.style.textAlign = 'right';
+                parent.className = (parent.className || '').replace(/ql-align-\w+/g, '') + ' ql-align-right';
+            } else {
+                parent.style.textAlign = 'left';
+                parent.className = (parent.className || '').replace(/ql-align-\w+/g, '');
+            }
+        }
+
+        setTimeout(() => {
+            updateOverlay();
+            setContenido(editor.root.innerHTML);
+        }, 50);
+    };
+
+    const removeSelectedImg = () => {
+        if (!selectedImg) return;
+        selectedImg.remove();
+        setSelectedImg(null);
+        if (quillRef.current) {
+            setContenido(quillRef.current.getEditor().root.innerHTML);
+        }
+    };
+
+
+
 
     // Data lists for select dropdowns
     const [usuarios, setUsuarios] = useState([]);
@@ -241,7 +461,8 @@ export const CrearActa = () => {
     const handleGuardar = async (e) => {
         e.preventDefault();
         
-        if (!nombre.trim() || !tipo || !proceso || !sede || !fechaInicio || !horaInicio || !fechaFin || !horaFin || !quienCita || !elaborador || !contenido.trim() || contenido === '<p><br></p>') {
+        const contenidoLimpio = contenido.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim();
+        if (!nombre.trim() || !tipo || !proceso || !sede || !fechaInicio || !horaInicio || !fechaFin || !horaFin || !quienCita || !elaborador || !contenidoLimpio) {
             showAlert({ message: 'Todos los campos obligatorios (*) y el contenido de temas tratados son requeridos', status: 'warning' });
             return;
         }
@@ -684,20 +905,64 @@ export const CrearActa = () => {
 
                     </div>
 
-                    {/* Right Column: Temas Tratados Rich Text Editor */}
+                    {/* Right Column: Temas Tratados Rich Text Editor (TinyMCE) */}
                     <div className="lg:col-span-8 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col min-h-[700px] lg:min-h-[85vh]">
-                        <h2 className="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wider pb-2 border-b border-slate-100">
-                            Temas Tratados
+                        <h2 className="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                            <span>Temas Tratados</span>
+                            <span className="text-xs font-normal text-slate-400 normal-case">📝 Editor completo — Arrastra, redimensiona y mueve imágenes como en Word</span>
                         </h2>
-                        <div className="flex-1 flex flex-col overflow-hidden focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-500 transition-all border border-slate-200 rounded">
+
+                        <div ref={editorWrapperRef} className="relative border border-slate-200 rounded-xl overflow-hidden bg-white">
+                            {/* Dynamic Corner Resize Handles & Mini Alignment Toolbar directly over image */}
+                            {overlayBounds && (
+                                <div
+                                    className="absolute pointer-events-none border-2 border-indigo-500 z-20 shadow-xs"
+                                    style={{
+                                        left: `${overlayBounds.left}px`,
+                                        top: `${overlayBounds.top}px`,
+                                        width: `${overlayBounds.width}px`,
+                                        height: `${overlayBounds.height}px`,
+                                    }}
+                                >
+                                    {/* Top-Left Handle */}
+                                    <div
+                                        className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-indigo-600 border border-white rounded-xs cursor-nwse-resize pointer-events-auto shadow-md"
+                                        onMouseDown={(e) => handleCornerDrag(e, 'nw')}
+                                    />
+                                    {/* Top-Right Handle */}
+                                    <div
+                                        className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-indigo-600 border border-white rounded-xs cursor-nesw-resize pointer-events-auto shadow-md"
+                                        onMouseDown={(e) => handleCornerDrag(e, 'ne')}
+                                    />
+                                    {/* Bottom-Left Handle */}
+                                    <div
+                                        className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-indigo-600 border border-white rounded-xs cursor-nesw-resize pointer-events-auto shadow-md"
+                                        onMouseDown={(e) => handleCornerDrag(e, 'sw')}
+                                    />
+                                    {/* Bottom-Right Handle */}
+                                    <div
+                                        className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-indigo-600 border border-white rounded-xs cursor-nwse-resize pointer-events-auto shadow-md"
+                                        onMouseDown={(e) => handleCornerDrag(e, 'se')}
+                                    />
+                                    {/* Mini Alignment float toolbar on top of image */}
+                                    <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-slate-900/90 text-white rounded-md px-2 py-1 text-[11px] shadow-lg pointer-events-auto whitespace-nowrap">
+                                        <button type="button" onClick={() => alignSelectedImg('left')} className="px-1.5 py-0.5 hover:bg-slate-700 rounded">Izq</button>
+                                        <button type="button" onClick={() => alignSelectedImg('center')} className="px-1.5 py-0.5 hover:bg-slate-700 rounded">Centro</button>
+                                        <button type="button" onClick={() => alignSelectedImg('right')} className="px-1.5 py-0.5 hover:bg-slate-700 rounded">Der</button>
+                                        <span className="w-px h-3 bg-slate-700 mx-0.5" />
+                                        <button type="button" onClick={() => removeSelectedImg()} className="px-1.5 py-0.5 text-red-400 hover:bg-slate-700 rounded font-bold">Borrar</button>
+                                    </div>
+                                </div>
+                            )}
                             <ReactQuill 
+                                ref={quillRef}
                                 theme="snow" 
                                 value={contenido} 
                                 onChange={setContenido} 
                                 modules={editorModules}
-                                className="bg-white flex-1 flex flex-col"
-                                style={{ height: '580px', paddingBottom: '42px' }}
-                                placeholder="Comienza a redactar el contenido del acta aquí..."
+                                className="bg-white"
+                                style={{ height: '600px', paddingBottom: '42px' }}
+                                placeholder="Escriba el contenido de temas tratados..."
                             />
                         </div>
                     </div>

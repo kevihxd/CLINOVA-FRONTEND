@@ -68,10 +68,11 @@ export const Navbar = () => {
         const segments = location.pathname.split('/').filter(Boolean);
         if (segments.length === 0 || segments[0] === 'dashboard') return '';
         const labels = {
+            'hojasDeVida': 'Hojas de Vida', 'nomina': 'Nómina', 'proveedores': 'Proveedores (OPS)',
             'talentoHumano': 'Talento Humano', 'procesos': 'Procesos', 'calidad': 'Calidad',
             'configuracion': 'Configuración', 'actas': 'Actas e Informes', 'contexto': 'Contexto',
             'hoja-de-vida': 'Hoja de Vida', 'organigrama': 'Organigrama', 'perfiles-cargo': 'Perfiles de Cargo',
-            'tipo-documento': 'Tipo Documento', 'incapacidades': 'Incapacidades', 'cursos': 'Cursos',
+            'tipo-documento': 'Tipo Documento', 'incapacidades': 'Incapacidad, ausentismo y licencias', 'cursos': 'Cursos',
             'mapa': 'Mapa de Procesos', 'tipos-documentos': 'Tipos de Documento',
             'listado-unico': 'Listado Único', 'crear-documento': 'Crear Documento',
             'solicitar-documento': 'Solicitar Documento', 'revision-documento': 'Revisión',
@@ -87,13 +88,13 @@ export const Navbar = () => {
     const pageTitle = getPageTitle();
 
     return (
-        <nav className="h-20 w-full bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] px-6 md:px-8 flex items-center justify-between z-50 fixed top-0 left-0 transition-all duration-300">
+        <nav className="h-22 w-full bg-gradient-to-r from-blue-100/95 via-sky-100/90 to-indigo-100/95 backdrop-blur-xl border-b border-blue-200/90 shadow-[0_4px_22px_-4px_rgba(30,58,138,0.12)] px-6 md:px-8 flex items-center justify-between z-50 fixed top-0 left-0 transition-all duration-300">
             {/* Left: Logo + Back Button */}
             <div className="flex items-center gap-3">
                 <div className="flex items-center gap-4 group cursor-pointer" onClick={() => handleNavigation('/dashboard')}>
                     <div className="relative">
-                        <div className="absolute -inset-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full opacity-0 group-hover:opacity-100 blur-lg transition-opacity duration-300" />
-                        <img src={logo} alt="Logo" className="relative h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105" />
+                        <div className="absolute -inset-2 bg-gradient-to-r from-blue-300 to-indigo-300 rounded-full opacity-0 group-hover:opacity-100 blur-lg transition-opacity duration-300" />
+                        <img src={logo} alt="Logo" className="relative h-18 w-auto object-contain transition-transform duration-300 group-hover:scale-105" />
                     </div>
                     <div className="hidden md:flex flex-col">
                         <span className="font-bold text-lg text-slate-800 tracking-tight leading-none group-hover:text-blue-600 transition-colors">Clinova</span>

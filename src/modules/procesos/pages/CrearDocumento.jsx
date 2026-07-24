@@ -156,7 +156,9 @@ export const CrearDocumentoForm = () => {
         if (e.target.name === 'proceso' || e.target.name === 'tipo') {
             const p = e.target.name === 'proceso' ? e.target.value : formData.proceso;
             const t = e.target.name === 'tipo' ? e.target.value : formData.tipo;
-            if (p && t && tipoCodigo === 'Automático') fetchCodigoPreview(p, t);
+            if (p && t && (tipoCodigo === 'Automático' || tipoCodigo === 'Semiautomático')) {
+                fetchCodigoPreview(p, t);
+            }
         }
     };
     const updateListState = (listName, newSelectedOptions) => setFormData(prev => ({ ...prev, [listName]: newSelectedOptions }));
@@ -201,7 +203,12 @@ export const CrearDocumentoForm = () => {
         data.append('otrosProcesos', formData.otrosProcesos.join(', '));
         data.append('normas', formData.normas.join(', '));
 
-        data.append('codigo', tipoCodigo === 'Automático' ? 'Automático' : tipoCodigo === 'Semiautomático' ? codigoPreview || 'Automático' : formData.codigo || 'N/A');
+        const codigoFinal = tipoCodigo === 'Automático' ? 'Automático'
+            : tipoCodigo === 'Semiautomático' ? (codigoPreview || 'Automático')
+            : tipoCodigo === 'Manual' ? (formData.codigo || codigoPreview || 'N/A')
+            : 'N/A';
+
+        data.append('codigo', codigoFinal);
         data.append('metodoCreacion', metodoCreacion);
         data.append('plantilla', usaPlantilla);
         data.append('estado', 'EN REVISIÓN');
@@ -350,42 +357,47 @@ export const CrearDocumentoForm = () => {
                                             <label className="text-sm font-bold text-slate-700">Código</label>
                                             <div className="flex gap-4 flex-wrap">
                                                 {['Automático', 'Semiautomático', 'Manual', 'N/A'].map(op => (
-                                                    <label key={op} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
-                                                        <input type="radio" name="codigo" checked={tipoCodigo === op}
+                                                    <label key={op} className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                                                        <input type="radio" name="codigoMode" checked={tipoCodigo === op}
                                                             onChange={() => {
                                                                 setTipoCodigo(op);
-                                                                if (op === 'Automático' && formData.proceso && formData.tipo) {
+                                                                if ((op === 'Automático' || op === 'Semiautomático') && formData.proceso && formData.tipo) {
                                                                     fetchCodigoPreview(formData.proceso, formData.tipo);
                                                                 }
                                                             }}
-                                                            className="text-blue-600 focus:ring-blue-500" /> {op}
+                                                            className="text-blue-600 focus:ring-blue-500 h-4 w-4" /> {op}
                                                     </label>
                                                 ))}
                                             </div>
                                             {tipoCodigo === 'Automático' && (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     {loadingCodigo ? (
-                                                        <span className="text-xs text-slate-400 animate-pulse">Generando código...</span>
+                                                        <span className="text-xs text-blue-600 animate-pulse font-medium">Generando código consecutivo...</span>
                                                     ) : codigoPreview ? (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 rounded-md text-sm font-mono font-bold text-blue-700">
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-md text-sm font-mono font-bold text-blue-700 shadow-xs">
                                                             🔖 {codigoPreview}
-                                                            <span className="text-[10px] font-normal text-blue-400 ml-1">generado automáticamente</span>
+                                                            <span className="text-[10px] font-semibold text-blue-500 ml-1">(generado automáticamente)</span>
                                                         </span>
                                                     ) : (
-                                                        <span className="text-xs text-slate-400 italic">Seleccione Proceso y Tipo para ver el código</span>
+                                                        <span className="text-xs text-slate-400 italic">Seleccione Proceso y Tipo para generar el código</span>
                                                     )}
                                                 </div>
                                             )}
                                             {tipoCodigo === 'Semiautomático' && (
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <input
-                                                        type="text"
-                                                        value={codigoPreview}
-                                                        onChange={(e) => setCodigoPreview(e.target.value)}
-                                                        placeholder="Ej: PGSP-PR-15"
-                                                        className="px-3 py-1.5 border border-slate-300 rounded text-sm font-mono focus:outline-none focus:border-blue-500 w-48"
-                                                    />
-                                                    <span className="text-xs text-slate-400">Puede editar el código sugerido</span>
+                                                <div className="flex flex-col gap-1.5 mt-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={codigoPreview}
+                                                            onChange={(e) => setCodigoPreview(e.target.value)}
+                                                            placeholder="Ej: PSST-PG-17"
+                                                            className="px-3 py-1.5 border border-blue-400 bg-blue-50/40 rounded text-sm font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white w-64 shadow-xs"
+                                                        />
+                                                        {loadingCodigo && <span className="text-xs text-blue-500 animate-pulse">Cargando sugerencia...</span>}
+                                                    </div>
+                                                    <span className="text-[11px] text-slate-500">
+                                                        Código sugerido generado automáticamente. Puede modificarlo o personalizarlo libremente antes de guardar.
+                                                    </span>
                                                 </div>
                                             )}
                                             {tipoCodigo === 'Manual' && (

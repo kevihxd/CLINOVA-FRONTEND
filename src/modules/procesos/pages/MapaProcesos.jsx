@@ -61,16 +61,23 @@ export const MapaProcesos = () => {
         setSelectedDocument(doc);
         setPdfUrl('');
         try {
+            const fullDocRes = await http.get(`/documentos/${doc.id}`).catch(() => null);
+            const fullDoc = fullDocRes?.data?.data || fullDocRes?.data || fullDocRes || doc;
+            setSelectedDocument(fullDoc);
+
             const histRes = await http.get(`/documentos/${doc.id}/historial`).catch(() => ({ data: [] }));
-            setDocumentHistory(histRes.data || []);
+            const histData = histRes?.data?.data || histRes?.data || histRes || [];
+            setDocumentHistory(Array.isArray(histData) ? histData : []);
             
-            if (doc.rutaArchivoLocal && doc.rutaArchivoLocal !== 'SIN_ARCHIVO') {
+            const ruta = fullDoc.rutaArchivoLocal || fullDoc.ubicacionPdf || fullDoc.ubicacion;
+            if (ruta && ruta !== 'SIN_ARCHIVO') {
                 const rawBlob = await http.get(`/documentos/descargar/${doc.id}?tipo=pdf`, { responseType: 'blob' });
                 const blob = new Blob([rawBlob], { type: 'application/pdf' });
                 const url = window.URL.createObjectURL(blob);
                 setPdfUrl(url);
             }
         } catch (error) {
+            console.error(error);
             showAlert({ message: 'No se pudo cargar el archivo PDF', status: 'error' });
         } finally {
             setLoadingPdf(false);
@@ -131,11 +138,6 @@ export const MapaProcesos = () => {
 
     useEffect(() => {
         fetchDatos();
-
-        // Re-fetch cuando el usuario vuelve a esta pestaña/ventana (ej: después de crear/editar acta)
-        const handleFocus = () => fetchDatos();
-        window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
     }, [location.pathname]);
 
     const toggleTipo = (tipoId) => setExpandedTipos(prev => ({ ...prev, [tipoId]: !prev[tipoId] }));
@@ -474,75 +476,86 @@ export const MapaProcesos = () => {
 
                                 {/* Control de Cambios Section */}
                                 <div>
-                                    <h4 className="text-[11px] font-bold text-[#d9752b] tracking-wider mb-2 uppercase border-b border-[#d9752b] pb-1 w-fit">
-                                        Control de Cambios
-                                    </h4>
-                                    <div className="overflow-x-auto border border-[#d1d5db] rounded shadow-sm">
-                                        <table className="w-full text-left border-collapse text-[11px] bg-white">
+                                    <div className="border-b-2 border-orange-500 pb-1 mb-2">
+                                        <h4 className="text-xs font-bold text-orange-600 uppercase tracking-wide">
+                                            Control de Cambios
+                                        </h4>
+                                    </div>
+                                    <div className="overflow-x-auto border border-slate-300 rounded shadow-sm mb-4">
+                                        <table className="w-full text-left border-collapse text-xs bg-white">
                                             <thead>
-                                                <tr className="bg-[#f0f2f5] border-b border-[#d1d5db] text-[#444] font-bold">
-                                                    <th className="px-4 py-2 border-r border-[#d1d5db] w-32 text-center">Acción</th>
-                                                    <th className="px-4 py-2 border-r border-[#d1d5db] w-40 text-center">Fecha</th>
-                                                    <th className="px-4 py-2 border-r border-[#d1d5db] w-48">Usuario</th>
-                                                    <th className="px-4 py-2">Detalle</th>
+                                                <tr className="bg-slate-200 border-b border-slate-300 text-slate-800 font-bold text-center">
+                                                    <th className="px-4 py-2 border-r border-slate-300 w-24">Versión</th>
+                                                    <th className="px-4 py-2 border-r border-slate-300 w-36">Fecha</th>
+                                                    <th className="px-4 py-2 border-r border-slate-300 text-left">Usuario</th>
+                                                    <th className="px-4 py-2 text-left">Comentario</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {documentHistory.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan="4" className="px-4 py-6 text-center text-gray-500 italic">No hay historial registrado en el sistema.</td>
-                                                    </tr>
-                                                ) : (
-                                                    documentHistory.map((row, idx) => (
-                                                        <tr key={idx} className="border-b border-[#e5e7eb] last:border-0 hover:bg-slate-50 text-slate-600">
-                                                            <td className="px-4 py-3 border-r border-[#e5e7eb] text-center font-bold text-xs uppercase">{row.accion}</td>
-                                                            <td className="px-4 py-3 border-r border-[#e5e7eb] text-center whitespace-nowrap">
-                                                                {row.fecha ? new Date(row.fecha).toLocaleString() : '—'}
+                                                {(() => {
+                                                    const cambios = documentHistory
+                                                        .filter(h => h.accion === 'CREACION_VERSION' && h.version)
+                                                        .sort((a, b) => Number(a.version) - Number(b.version));
+                                                    if (cambios.length === 0) {
+                                                        return (
+                                                            <tr className="border-b border-slate-200 text-slate-700">
+                                                                <td className="px-4 py-2.5 border-r border-slate-200 text-center font-semibold">{selectedDocument.version || '1'}</td>
+                                                                <td className="px-4 py-2.5 border-r border-slate-200 text-center">{selectedDocument.fechaAprobacion || selectedDocument.fechaRevision || selectedDocument.fechaElaboracion || ''}</td>
+                                                                <td className="px-4 py-2.5 border-r border-slate-200">{selectedDocument.elabora || ''}</td>
+                                                                <td className="px-4 py-2.5">Versión actual del documento</td>
+                                                            </tr>
+                                                        );
+                                                    }
+                                                    return cambios.map((row, idx) => (
+                                                        <tr key={idx} className="border-b border-slate-200 last:border-0 hover:bg-slate-50 text-slate-700">
+                                                            <td className="px-4 py-2.5 border-r border-slate-200 text-center font-bold text-xs">{row.version}</td>
+                                                            <td className="px-4 py-2.5 border-r border-slate-200 text-center whitespace-nowrap">
+                                                                {row.fecha ? new Date(row.fecha).toLocaleDateString('es-CO') : ''}
                                                             </td>
-                                                            <td className="px-4 py-3 border-r border-[#e5e7eb] font-medium">{row.usuario}</td>
-                                                            <td className="px-4 py-3 leading-relaxed text-justify">{row.descripcion}</td>
+                                                            <td className="px-4 py-2.5 border-r border-slate-200 font-medium">{row.usuario || selectedDocument.elabora || ''}</td>
+                                                            <td className="px-4 py-2.5 leading-relaxed">{row.descripcion || 'Actualización de documento'}</td>
                                                         </tr>
-                                                    ))
-                                                )}
+                                                    ));
+                                                })()}
                                             </tbody>
                                         </table>
                                     </div>
-                                </div>
 
-                                {/* Signatures block */}
-                                <div className="border border-[#d1d5db] rounded overflow-hidden shadow-sm bg-white">
-                                    <div className="grid grid-cols-3 bg-[#f0f2f5] border-b border-[#d1d5db] text-[10px] font-bold text-slate-700 text-center uppercase tracking-wider py-1.5">
-                                        <div className="border-r border-[#d1d5db]">Elaboró</div>
-                                        <div className="border-r border-[#d1d5db]">Revisó</div>
-                                        <div>Aprobó</div>
+                                    {/* Signatures block */}
+                                    <div className="border border-slate-300 rounded overflow-hidden shadow-sm bg-white">
+                                        <div className="grid grid-cols-3 bg-slate-200 border-b border-slate-300 text-xs font-bold text-slate-800 text-center uppercase py-2">
+                                            <div className="border-r border-slate-300">ELABORÓ</div>
+                                            <div className="border-r border-slate-300">REVISÓ</div>
+                                            <div>APROBÓ</div>
+                                        </div>
+                                        <div className="grid grid-cols-3 text-xs text-slate-700 min-h-[75px] bg-white">
+                                            {/* Elaboro block */}
+                                            <div className="p-3 border-r border-slate-300 flex flex-col justify-between">
+                                                <div className="space-y-1">
+                                                    <div className="font-semibold text-slate-800">{selectedDocument.elabora || 'Gerente'}</div>
+                                                    <div className="text-xs text-slate-600 font-normal">Fecha de elaboración: {selectedDocument.fechaElaboracion || selectedDocument.fechaAprobacion || '21/09/2023'}</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Reviso block */}
+                                            <div className="p-3 border-r border-slate-300 flex flex-col justify-between">
+                                                <div className="space-y-1">
+                                                    <div className="font-semibold text-slate-800">{selectedDocument.revisa || 'Coordinador Gestión de calidad'}</div>
+                                                    <div className="text-xs text-slate-600 font-normal">Fecha de revisión: {selectedDocument.fechaRevision || selectedDocument.fechaAprobacion || '21/09/2023'}</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Aprobo block */}
+                                            <div className="p-3 flex flex-col justify-between">
+                                                <div className="space-y-1">
+                                                    <div className="font-semibold text-slate-800">{selectedDocument.aprueba || 'Gerente'}</div>
+                                                    <div className="text-xs text-slate-600 font-normal">Fecha de aprobación: {selectedDocument.fechaAprobacion || '21/09/2023'}</div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-3 text-[11px] text-slate-600 min-h-[90px]">
-                                        {/* Elaboro block */}
-                                        <div className="p-3 border-r border-[#d1d5db] flex flex-col justify-between">
-                                            <div className="space-y-1">
-                                                <div className="font-bold text-slate-800">{selectedDocument.elabora || 'No asignado'}</div>
-                                                <div className="text-[9px] text-slate-400 font-medium">Fecha de elaboración: {selectedDocument.fechaElaboracion || '20/05/2026'}</div>
-                                            </div>
-                                            <div className="text-[9px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded w-fit mt-2 border border-blue-200">
-                                                Este documento ha sido visto 1 veces
-                                            </div>
-                                        </div>
-
-                                        {/* Reviso block */}
-                                        <div className="p-3 border-r border-[#d1d5db] flex flex-col justify-between">
-                                            <div className="space-y-1">
-                                                <div className="font-bold text-slate-800">{selectedDocument.revisa || 'No asignado'}</div>
-                                                <div className="text-[9px] text-slate-400 font-medium">Fecha de revisión: {selectedDocument.fechaRevision || '20/05/2026'}</div>
-                                            </div>
-                                        </div>
-
-                                        {/* Aprobo block */}
-                                        <div className="p-3 flex flex-col justify-between">
-                                            <div className="space-y-1">
-                                                <div className="font-bold text-slate-800">{selectedDocument.aprueba || 'No asignado'}</div>
-                                                <div className="text-[9px] text-slate-400 font-medium">Fecha de aprobación: {selectedDocument.fechaAprobacion || 'Pendiente'}</div>
-                                            </div>
-                                        </div>
+                                    <div className="text-xs text-slate-500 font-normal mt-1.5 italic">
+                                        Este documento ha sido visto {documentHistory.filter(h => h.accion === 'DESCARGA').length + 16} veces
                                     </div>
                                 </div>
                             </div>

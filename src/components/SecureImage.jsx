@@ -10,27 +10,54 @@ const SecureImage = ({ src, alt, className, fallbackSrc }) => {
         let objectUrl = null;
 
         const fetchImage = async () => {
-            if (!src) {
+            if (!src || typeof src !== 'string' || !src.trim()) {
+                setLoading(false);
+                setError(true);
+                return;
+            }
+
+            const cleanSrc = src.trim();
+
+            // 1. Base64 o blobs de vista previa local -> usar directamente
+            if (cleanSrc.startsWith('blob:') || cleanSrc.startsWith('data:')) {
+                setImageSrc(cleanSrc);
+                setError(false);
                 setLoading(false);
                 return;
             }
 
-            // Si ya es un blob local (creado por preview) o una URL http completa que no es de nuestro backend, la usamos directo
-            if (src.startsWith('blob:')) {
-                setImageSrc(src);
+            // 2. URLs de imágenes externas completas que no requieren token
+            if ((cleanSrc.startsWith('http://') || cleanSrc.startsWith('https://')) && !cleanSrc.includes('/api/v1/')) {
+                setImageSrc(cleanSrc);
+                setError(false);
+                setLoading(false);
+                return;
+            }
+
+            // 3. Rutas locales de Windows (ej. C:\...) -> no realizable via http
+            if (/^[a-zA-Z]:[\\/]/.test(cleanSrc)) {
+                setError(true);
                 setLoading(false);
                 return;
             }
 
             try {
                 setLoading(true);
-                // Realizamos la peticin a travs del httpClient, el cual ya inyecta el header Authorization: Bearer
-                const response = await http.get(src, { responseType: 'blob' });
-                objectUrl = URL.createObjectURL(response.data);
-                setImageSrc(objectUrl);
-                setError(false);
+                const res = await http.get(cleanSrc, { responseType: 'blob' });
+                const blobData = (res instanceof Blob) ? res : (res?.data instanceof Blob ? res.data : null);
+                
+                if (blobData) {
+                    objectUrl = URL.createObjectURL(blobData);
+                    setImageSrc(objectUrl);
+                    setError(false);
+                } else if (typeof res === 'string') {
+                    setImageSrc(res);
+                    setError(false);
+                } else {
+                    setImageSrc(cleanSrc);
+                    setError(false);
+                }
             } catch (err) {
-                console.error("Error cargando imagen segura:", err);
                 setError(true);
             } finally {
                 setLoading(false);

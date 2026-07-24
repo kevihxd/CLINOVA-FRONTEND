@@ -3,14 +3,14 @@ import { Download, Search, Users, UserCheck, UserX, AlertCircle } from 'lucide-r
 import { useAuth } from '../../../providers/AuthProvider';
 import axios from 'axios';
 import { API_BASE_URL } from '../../../config/api';
-import * as XLSX from 'xlsx';
+import { exportReportToExcel } from '../../../utils/excelExporter';
 
 export const ReporteUsuarios = () => {
     const { user } = useAuth();
     const [usuarios, setUsuarios] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filtroEstado, setFiltroEstado] = useState('TODOS');
+    const [filtroEstado, setFiltroEstado] = useState('ACTIVO'); // Ocultar inactivos por defecto
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -64,17 +64,24 @@ export const ReporteUsuarios = () => {
     const totalInactivos = usuarios.filter(u => (u.estado?.toUpperCase() || 'INACTIVO') === 'INACTIVO').length;
 
     const exportToExcel = () => {
-        const dataToExport = usuariosFiltrados.map(u => ({
-            'Cédula / Documento': u.documento,
-            'Nombre Completo': u.nombre,
-            'Sede': u.sede,
-            'Estado': u.estado?.toUpperCase() || 'INACTIVO'
-        }));
+        const headers = ['Documento', 'Nombre Completo', 'Cargo', 'Sede', 'Estado'];
+        const rows = usuariosFiltrados.map(u => [
+            u.documento || '',
+            u.nombre || '',
+            u.cargo || 'N/A',
+            u.sede || 'N/A',
+            u.estado?.toUpperCase() || 'INACTIVO'
+        ]);
 
-        const ws = XLSX.utils.json_to_sheet(dataToExport);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Reporte_Usuarios");
-        XLSX.writeFile(wb, `Reporte_Talento_Humano_${new Date().toISOString().split('T')[0]}.xlsx`);
+        exportReportToExcel({
+            title: 'REPORTE DE PERSONAL Y TALENTO HUMANO',
+            subtitle: 'Clinova IPS - Sistema de Gestión de Personal Vigente',
+            sheetName: 'Talento_Humano',
+            filename: `Reporte_Talento_Humano_${new Date().toISOString().split('T')[0]}.xlsx`,
+            headers,
+            rows,
+            themeColor: '1E3A8A'
+        });
     };
 
     return (

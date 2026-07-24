@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Search, Settings, ChevronLeft, ChevronRight, IdCard, Filter, Plus, FileText, User as UserIcon, Briefcase, Eye, BarChart2 } from 'lucide-react';
+import { ArrowLeft, Search, Settings, ChevronLeft, ChevronRight, IdCard, Filter, Plus, UserPlus, FileText, User as UserIcon, Briefcase, Eye, BarChart2, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CreateUsuario } from '../components/CreateUsuario';
 import { UserDetailModal } from '../components/UserDetailModal';
@@ -50,17 +50,23 @@ export const Usuarios = () => {
         fetchUsers();
     }, []);
 
+    const getNombre = (u) => u?.persona?.primerNombre ? `${u.persona.primerNombre} ${u.persona.segundoNombre || ''}`.trim() : (u?.nombres || u?.nombre || u?.hojaVida?.nombres || u?.username || '');
+    const getApellido = (u) => u?.persona?.primerApellido ? `${u.persona.primerApellido} ${u.persona.segundoApellido || ''}`.trim() : (u?.apellidos || u?.hojaVida?.apellidos || '');
+    const getDoc = (u) => u?.persona?.numeroDocumento || u?.hojaVida?.cedula || u?.documento || u?.username || '';
+    const getCargo = (u) => (typeof u?.cargo === 'object' ? u?.cargo?.nombre : u?.cargo) || u?.hojaVida?.cargos?.[0]?.nombre || u?.rol || 'Sin Cargo';
+
     const filteredData = useMemo(() => {
         if (!users || !Array.isArray(users)) return [];
+        const search = searchTerm.toLowerCase().trim();
+        if (!search) return users;
         return users.filter(user => {
-            const nombre = user.persona?.primerNombre || '';
-            const apellido = user.persona?.primerApellido || '';
-            const fullName = `${nombre} ${apellido}`.toLowerCase();
-            const docNum = (user.persona?.numeroDocumento || user.username || '').toString();
-            const role = user.rol?.toLowerCase() || '';
-            const search = searchTerm.toLowerCase();
+            const nombreStr = `${getNombre(user)} ${getApellido(user)}`.toLowerCase();
+            const docStr = getDoc(user).toString().toLowerCase();
+            const roleStr = (user.rol || '').toLowerCase();
+            const cargoStr = getCargo(user).toLowerCase();
+            const usernameStr = (user.username || '').toLowerCase();
 
-            return fullName.includes(search) || docNum.includes(search) || role.includes(search);
+            return nombreStr.includes(search) || docStr.includes(search) || roleStr.includes(search) || cargoStr.includes(search) || usernameStr.includes(search);
         });
     }, [searchTerm, users]);
 
@@ -84,47 +90,41 @@ export const Usuarios = () => {
         setIsStatsModalOpen(true);
     };
 
-    return (
-        <div className="min-h-screen bg-slate-50/50 p-6 md:p-8 animate-fade-in">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="p-2 bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full border border-slate-200 shadow-sm transition-all"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Usuarios</h1>
-                        <p className="text-sm text-slate-500 font-medium">Gestión de usuarios y personal</p>
-                    </div>
-                </div>
+    const handleDeleteUser = async (user) => {
+        if (!window.confirm(`¿Está seguro de eliminar al usuario "${user.username}"?`)) return;
+        try {
+            await UsuariosService.deleteUser(user.id);
+            showAlert({ message: 'Usuario eliminado exitosamente', status: 'success' });
+            fetchUsers();
+        } catch (error) {
+            console.error("Error al eliminar usuario", error);
+            showAlert({ message: error?.response?.data?.message || 'Error al eliminar usuario', status: 'error' });
+        }
+    };
 
-                <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-all font-medium text-sm">
-                        <Settings className="w-4 h-4" />
-                        <span>Configuración</span>
-                    </button>
-                    <button
-                        onClick={() => {
-                            setUserToEdit(null); 
-                            setIsCreateModalOpen(true);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-all font-medium text-sm"
-                    >
-                        <Plus className="w-4 h-4" />
-                        <span>Crear Persona</span>
-                    </button>
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Gestión de Usuarios</h1>
+                    <p className="text-slate-500 text-sm mt-1">Administre las cuentas de usuario y permisos del sistema.</p>
                 </div>
+                <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-sm hover:shadow"
+                >
+                    <UserPlus className="w-4 h-4" />
+                    <span>Nuevo Usuario</span>
+                </button>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden">
-                <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row gap-4 justify-between items-center bg-white">
+            <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="relative w-full sm:w-96">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                             type="text"
-                            placeholder="Buscar por nombre, documento o rol..."
+                            placeholder="Buscar por nombre, documento, cargo o rol..."
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
@@ -180,28 +180,32 @@ export const Usuarios = () => {
                                     <tr key={user.id || user.username} className="hover:bg-blue-50/30 transition-colors group">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="text-sm font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-                                                {TIPO_DOC_MAP[user.persona?.tipoDocumento] || user.persona?.tipoDocumento || 'N/A'}
+                                                {TIPO_DOC_MAP[user.persona?.tipoDocumento] || user.persona?.tipoDocumento || 'CC'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-2 text-slate-700">
                                                 <IdCard className="w-4 h-4 text-slate-400" />
-                                                <span className="text-sm font-medium">{user.persona?.numeroDocumento || user.username}</span>
+                                                <span className="text-sm font-medium">{getDoc(user)}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">
-                                                    {(user.persona?.primerNombre?.[0] || user.username?.[0] || 'U')}
+                                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase overflow-hidden">
+                                                    {user.hojaVida?.fotoUrl ? (
+                                                        <img src={`http://localhost:8080${user.hojaVida.fotoUrl}`} alt="Avatar" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        (getNombre(user)?.[0] || 'U')
+                                                    )}
                                                 </div>
                                                 <span className="text-sm font-medium text-slate-700">
-                                                    {user.persona?.primerNombre || user.username} {user.persona?.segundoNombre || ''}
+                                                    {getNombre(user)}
                                                 </span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="text-sm font-medium text-slate-700">
-                                                {user.persona?.primerApellido || 'Sin registro'} {user.persona?.segundoApellido || ''}
+                                                {getApellido(user) || '—'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -211,7 +215,7 @@ export const Usuarios = () => {
                                                     user.rol === 'HR_MANAGER' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
                                                         'bg-amber-100 text-amber-700 border-amber-200'
                                                     }`}>
-                                                    {user.cargo?.nombre || user.rol || 'Sin Rol'}
+                                                    {getCargo(user)}
                                                 </span>
                                             </div>
                                         </td>
@@ -239,6 +243,13 @@ export const Usuarios = () => {
                                                     className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all text-xs font-semibold px-2"
                                                 >
                                                     Editar
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteUser(user)}
+                                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                                    title="Eliminar usuario"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </td>

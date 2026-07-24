@@ -51,9 +51,16 @@ const AnalisisList = lazy(() => import('../modules/contexto/pages/AnalisisList')
 const PartesList = lazy(() => import('../modules/contexto/pages/PartesList').then(m => ({ default: m.PartesList })));
 const RequisitosList = lazy(() => import('../modules/contexto/pages/RequisitosList').then(m => ({ default: m.RequisitosList })));
 
+// --- HOJAS DE VIDA ---
+const HojaVidaList = lazy(() => import('../modules/hojasVida/pages/HojaVidaList').then(m => ({ default: m.HojaVidaList })));
+
 export const ROUTES = {
   MI_CUENTA: {
     MI_PERFIL: { path: '/miCuenta/mi-perfil', title: 'Mi Perfil', element: <MiPerfil /> },
+  },
+  HOJAS_DE_VIDA: {
+    NOMINA: { path: '/hojasDeVida/nomina', title: 'Hojas de Vida - Nómina', element: <HojaVida tipoSubmodulo="NOMINA" /> },
+    PROVEEDORES: { path: '/hojasDeVida/proveedores', title: 'Hojas de Vida - Proveedores', element: <HojaVida tipoSubmodulo="PROVEEDORES" /> },
   },
   TALENTO_HUMANO: {
     HOJA_VIDA: { path: '/talentoHumano/hoja-de-vida', title: 'Hoja de Vida', element: <HojaVida /> },
@@ -62,7 +69,7 @@ export const ROUTES = {
     ORGANIGRAMA: { path: '/talentoHumano/organigrama', title: 'Organigrama', element: <Organigrama /> },
     VER_DETALLE: { path: '/talentoHumano/perfiles-cargo/:id', title: 'Detalle de Cargo', element: <VerDetalleCargo /> },
     TIPO_DOCUMENTO: { path: '/talentoHumano/tipo-documento', title: 'Tipo de Documento', element: <TipoDocumento /> },
-    INCAPACIDADES: { path: '/talentoHumano/incapacidades', title: 'Incapacidades', element: <Incapacidades /> },
+    INCAPACIDADES: { path: '/talentoHumano/incapacidades', title: 'Incapacidad, ausentismo y licencias', element: <Incapacidades /> },
     CURSOS: { path: '/talentoHumano/cursos', title: 'Gestión de Cursos', element: <GestionCursos /> },
   },
   PROCESOS: {

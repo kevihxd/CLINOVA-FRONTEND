@@ -4,6 +4,7 @@ import { ConfiguracionOptions } from '../../configuracion/components/Configuraci
 import { ProcesosOptions } from '../../procesos/components/ProcesosOptions';
 import { ActasInformesOptions } from '../../actasInformes/components/ActasInformesOptions';
 import { ContextoOptions } from '../../contexto/components/ContextoOptions';
+import { HojaVidaOptions } from '../../hojasVida/components/HojaVidaOptions';
 
 
 export const OPTIONS_MAP = {
@@ -14,4 +15,5 @@ export const OPTIONS_MAP = {
     '6': ProcesosOptions, 
     '7': ActasInformesOptions,
     '8': ContextoOptions,
+    '9': HojaVidaOptions,
 };
